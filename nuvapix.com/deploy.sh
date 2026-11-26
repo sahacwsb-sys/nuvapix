@@ -16,7 +16,7 @@ STATE=.deploy-state
 # Fail yang TIDAK dihantar ke hosting
 EXCLUDE=(
   ./.DS_Store ./BACA-SAYA.md ./CLAUDE.md ./nuvapix.html ./nuvapix-upload.zip
-  ./deploy.sh ./deploy.conf ./setup-deploy.sh ./upload-netkl.sh ./.deploy-state
+  ./deploy.sh ./deploy.conf ./setup-deploy.sh ./upload-netkl.sh ./.deploy-state ./.deploy-state.new
 )
 
 FTP_PASS=$(security find-generic-password -s nuvapix-ftp -a "$FTP_USER" -w 2>/dev/null) \
