@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<!-- BUILD:HEAD -->
+<title>Nuvapix</title>
+<meta name="claude:viewport-fit-sides" content="cover" />
+<meta name="description" content="Upscale images 2× or 4× with Real-ESRGAN AI. One image or many at once, right in your browser." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Schibsted+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<!-- /BUILD:HEAD -->
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<!-- BUILD:BODY -->
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <a href="#" class="logo" aria-label="Nuvapix">
+      <span class="logo-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <span data-brand>Nuvapix</span>
+    </a>
+    <nav class="toplinks">
+      <a href="#cara" data-i18n="nav.how">How it works</a>
+      <a href="#harga" data-i18n="nav.pricing">Pricing</a>
+      <a href="#soalan" data-i18n="nav.faq">FAQ</a>
+    </nav>
+    <div class="lang" role="group" data-i18n-aria="lang.label" aria-label="Language">
+      <button type="button" data-lang="en" aria-pressed="true">EN</button>
+      <button type="button" data-lang="ms" aria-pressed="false">BM</button>
+    </div>
+    <span class="quota" id="usagePill">Free · unlimited</span>
+  </div>
+</header>
+
+<main>
+  <!-- HERO -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div class="hero-left">
+        <p class="eyebrow mono" data-i18n="hero.eyebrow">Real-ESRGAN · 2× / 4× · one or many</p>
+        <h1><span data-i18n="hero.h1a">Enlarge your images.</span><br /><span class="hl" data-i18n="hero.h1b">Keep every detail.</span></h1>
+        <p class="lead" data-i18n="hero.lead">Add one image or ten at once. The AI rebuilds edges and texture as it enlarges, then you download them one by one or all together in a single ZIP file.</p>
+
+        <div class="lightbox" id="dropZone" tabindex="0" role="button" data-i18n-aria="drop.aria" aria-label="Choose images to upload">
+          <span class="crop tl"></span><span class="crop tr"></span><span class="crop bl"></span><span class="crop br"></span>
+          <div class="lb-body">
+            <svg class="lb-ico" viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="10" width="28" height="22" rx="2"/><rect x="14" y="18" width="28" height="22" rx="2" fill="var(--paper)"/><circle cx="22" cy="26" r="2.5"/><path d="M42 34l-8-7-12 11"/></svg>
+            <div>
+              <p class="lb-title" data-i18n="drop.title">Drop images here</p>
+              <p class="lb-sub" id="dropSub">JPG, PNG, WEBP · up to 30 images at once</p>
+            </div>
+            <button class="btn btn-ink" id="pickBtn" type="button" data-i18n="drop.pick">Choose images</button>
+          </div>
+          <input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp" multiple hidden />
+        </div>
+        <div class="samples">
+          <span class="mono small" data-i18n="samples.label">No image? Try a sample:</span>
+          <div class="sample-row" id="sampleRow"></div>
+          <button class="link-btn" id="sampleAllBtn" type="button" data-i18n="samples.all">Load all three</button>
+        </div>
+      </div>
+
+      <figure class="loupe-card">
+        <canvas id="loupe" data-i18n-aria="loupe.aria" aria-label="Magnifier demo"></canvas>
+        <figcaption class="mono small">
+          <span><b class="dot-c"></b> <span data-i18n="loupe.in">Inside the lens: high resolution</span></span>
+          <span><b class="dot-m"></b> <span data-i18n="loupe.out">Outside: original 120×90 px</span></span>
+          <span class="muted" data-i18n="loupe.note">Illustration · move your pointer</span>
+        </figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- WORKBENCH -->
+  <section class="bench" id="bench" hidden>
+    <div class="wrap">
+      <div class="bench-bar">
+        <div class="bar-group">
+          <span class="bar-label mono" data-i18n="bench.engine">Engine</span>
+          <div class="toggle" id="modeSeg" role="group">
+            <button type="button" data-mode="ai" class="on">AI Real-ESRGAN</button>
+            <button type="button" data-mode="classic" data-i18n="mode.fast">Fast</button>
+          </div>
+        </div>
+        <div class="bar-group">
+          <span class="bar-label mono" data-i18n="bench.size">Size</span>
+          <div class="toggle" id="scaleSeg" role="group">
+            <button type="button" data-scale="2">2×</button>
+            <button type="button" data-scale="4" class="on">4×</button>
+          </div>
+        </div>
+        <div class="bar-group">
+          <span class="bar-label mono" data-i18n="bench.format">Format</span>
+          <div class="toggle" id="fmtSeg" role="group">
+            <button type="button" data-fmt="png" class="on">PNG</button>
+            <button type="button" data-fmt="jpeg">JPG</button>
+          </div>
+        </div>
+        <div class="bar-actions">
+          <button class="btn btn-line" id="addBtn" type="button" data-i18n="bench.add">+ Add</button>
+          <button class="btn btn-cyan" id="runBtn" type="button">Upscale all</button>
+          <button class="btn btn-ink" id="zipBtn" type="button" disabled>Download ZIP</button>
+        </div>
+      </div>
+
+      <div class="batch-status">
+        <div class="bs-text"><b id="bsMain">0 / 0</b> <span class="muted" id="bsSub"></span></div>
+        <div class="bs-bar"><div id="bsFill"></div></div>
+      </div>
+
+      <div class="bench-grid">
+        <div class="viewer">
+          <div class="compare no-result" id="compare">
+            <img id="imgBefore" alt="" />
+            <div class="compare-after"><img id="imgAfter" alt="" /></div>
+            <div class="compare-handle"><span aria-hidden="true">⇆</span></div>
+            <span class="ctag ctag-l mono" data-i18n="tag.orig">Original</span>
+            <span class="ctag ctag-r mono">AI</span>
+            <div class="working" id="working" hidden>
+              <div class="working-box">
+                <p class="mono" id="procText">…</p>
+                <div class="wbar"><div id="barFill"></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="viewer-foot">
+            <p class="mono small" id="viewerMeta">—</p>
+            <div class="zoom-row">
+              <label class="mono small" for="zoom" data-i18n="zoom">Zoom</label>
+              <input type="range" id="zoom" min="1" max="4" step="0.25" value="1" />
+              <span class="mono small" id="zoomVal">1×</span>
+            </div>
+          </div>
+        </div>
+
+        <aside class="sheet">
+          <div class="sheet-head">
+            <p class="mono small" data-i18n="sheet.title">Contact sheet</p>
+            <button class="link-btn" id="clearBtn" type="button" data-i18n="sheet.clear">Clear</button>
+          </div>
+          <ol class="frames" id="frames"></ol>
+        </aside>
+      </div>
+      <p class="ai-note mono small" id="aiNote"></p>
+    </div>
+  </section>
+
+  <!-- SPEC STRIP -->
+  <section class="spec">
+    <div class="wrap spec-grid">
+      <div><span class="mono" data-i18n="spec.model">Model</span><b>realesr-general-x4v3</b></div>
+      <div><span class="mono" data-i18n="spec.size">Model size</span><b data-i18n="spec.sizeV">4.9 MB, downloaded once</b></div>
+      <div><span class="mono" data-i18n="spec.proc">Processing</span><b data-i18n="spec.procV">GPU (WebGPU) or CPU</b></div>
+      <div><span class="mono" data-i18n="spec.yours">Your images</span><b data-i18n="spec.yoursV">Stay on your device</b></div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="block" id="cara">
+    <div class="wrap">
+      <h2 data-i18n="how.title">How it works</h2>
+      <ol class="steps">
+        <li><span class="step-n mono">1</span><div><h3 data-i18n="how.1h">Add your images</h3><p data-i18n="how.1p"></p></div></li>
+        <li><span class="step-n mono">2</span><div><h3 data-i18n="how.2h">Pick 2× or 4×</h3><p data-i18n="how.2p"></p></div></li>
+        <li><span class="step-n mono">3</span><div><h3 data-i18n="how.3h">Check and save</h3><p data-i18n="how.3p"></p></div></li>
+      </ol>
+      <div class="uses">
+        <div class="use"><h3 data-i18n="use.1h">Online sellers</h3><p data-i18n="use.1p"></p></div>
+        <div class="use"><h3 data-i18n="use.2h">Old &amp; family photos</h3><p data-i18n="use.2p"></p></div>
+        <div class="use"><h3 data-i18n="use.3h">Logos &amp; graphics</h3><p data-i18n="use.3p"></p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRICING -->
+  <section class="block" id="harga">
+    <div class="wrap">
+      <div class="price-head">
+        <div>
+          <h2 data-i18n="price.title">Pricing</h2>
+          <p class="sub"><span class="soon mono" data-i18n="price.soon">Coming soon</span> <span data-i18n="price.sub">Right now every feature is free with no limit.</span></p>
+        </div>
+        <div class="billing" role="group">
+          <button type="button" data-bill="monthly" class="on" data-i18n="bill.monthly">Monthly</button>
+          <button type="button" data-bill="yearly"><span data-i18n="bill.yearly">Yearly</span> <em class="save mono" data-i18n="bill.save">2 months free</em></button>
+        </div>
+      </div>
+      <div class="plans" id="plans"></div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="block" id="soalan">
+    <div class="wrap faq-wrap">
+      <h2 data-i18n="faq.title">FAQ</h2>
+      <div class="faq">
+        <details><summary data-i18n="faq.1q"></summary><p data-i18n="faq.1a"></p></details>
+        <details><summary data-i18n="faq.2q"></summary><p id="faq2a"></p></details>
+        <details><summary data-i18n="faq.3q"></summary><p data-i18n="faq.3a"></p></details>
+        <details><summary data-i18n="faq.4q"></summary><p data-i18n="faq.4a"></p></details>
+        <details><summary data-i18n="faq.5q"></summary><p data-i18n="faq.5a"></p></details>
+        <details><summary data-i18n="faq.6q"></summary><p data-i18n="faq.6a"></p></details>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap foot-inner">
+    <span>© <span id="year"></span> <span data-brand>Nuvapix</span></span>
+    <span class="mono small muted" data-i18n="foot.made">Made in Malaysia · Real-ESRGAN (BSD-3)</span>
+  </div>
+</footer>
+
+<div class="modal" id="paywall" hidden>
+  <div class="modal-back" data-close></div>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="pwTitle">
+    <button class="modal-x" data-close data-i18n-aria="pw.close" aria-label="Close">×</button>
+    <h3 id="pwTitle"></h3>
+    <p class="muted" id="pwText"></p>
+    <div class="billing billing-sm" role="group">
+      <button type="button" data-bill="monthly" class="on" data-i18n="bill.monthly">Monthly</button>
+      <button type="button" data-bill="yearly"><span data-i18n="bill.yearly">Yearly</span> <em class="save mono" data-i18n="bill.save">2 months free</em></button>
+    </div>
+    <div class="plans plans-modal" id="plansModal"></div>
+    <p class="mono small muted" data-i18n="pw.demo">Payments are not active yet. This is a demo.</p>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+<!-- /BUILD:BODY -->
+
+<script src="config.js"></script>
+<script src="i18n.js"></script>
+<script src="upscaler.js"></script>
+<script src="zip.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
