@@ -339,7 +339,7 @@
 
 
   // =================== KEADAAN ===================
-  const S = { items: [], sel: null, mode: "ai", scale: 4, fmt: "png", busy: false, seq: 0 };
+  const S = { items: [], sel: null, mode: "ai", look: "natural", scale: 4, fmt: "png", busy: false, seq: 0 };
   const loadImg = (url) => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
 
   async function addFiles(files) {
@@ -429,8 +429,10 @@
     $("clearBtn").disabled = S.busy;
     const big = S.items.some((i) => Math.max(i.w, i.h) > CFG.ai.maxInputSide);
     const info = Upscaler.aiInfo();
+    $("lookGroup").hidden = S.mode !== "ai";
     $("aiNote").textContent = S.mode !== "ai" ? t("note.fast")
-      : (info.ready ? t("note.ready", { dev: info.backend === "webgpu" ? "GPU" : "CPU" }) : t("note.first"))
+      : t(S.look === "natural" ? "note.natural" : "note.enhanced") + " "
+      + (info.ready ? t("note.ready", { dev: info.backend === "webgpu" ? "GPU" : "CPU" }) : t("note.first"))
         + (big ? t("note.big", { px: CFG.ai.maxInputSide }) : "");
   }
 
@@ -493,6 +495,7 @@
     });
   }
   toggle("modeSeg", "mode", (v) => (S.mode = v));
+  toggle("lookSeg", "look", (v) => (S.look = v));
   toggle("scaleSeg", "scale", (v) => (S.scale = Number(v)));
   toggle("fmtSeg", "fmt", (v) => (S.fmt = v));
 
@@ -502,7 +505,7 @@
     const todo = S.items.filter((i) => i.status === "queued" || i.status === "error");
     if (!todo.length) return;
     S.busy = true;
-    const mode = S.mode, scale = S.scale;
+    const mode = S.mode, scale = S.scale, look = S.look;
     let aiFailed = false, hitLimit = false;
     renderAll();
     for (const it of todo) {
@@ -520,7 +523,7 @@
       };
       onProgress(0, t("proc.prep"));
       const t0 = performance.now();
-      const opts = { scale, maxSide: CFG.maxOutputSide, strength: 55, ai: CFG.ai, onProgress };
+      const opts = { scale, maxSide: CFG.maxOutputSide, strength: 55, look, ai: CFG.ai, onProgress };
       try {
         let canvas, used = mode;
         if (mode === "ai" && !aiFailed) {

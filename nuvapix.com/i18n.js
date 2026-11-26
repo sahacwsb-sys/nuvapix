@@ -34,6 +34,9 @@ window.I18N = (function () {
 
       "bench.engine": "Engine", "bench.size": "Size", "bench.format": "Format",
       "mode.fast": "Fast",
+      "bench.look": "Result", "look.natural": "Natural", "look.enhanced": "Enhanced",
+      "note.natural": "Natural: keeps faces and the original look, just bigger and sharper.",
+      "note.enhanced": "Enhanced: stronger AI detail; may smooth or change faces.",
       "bench.add": "+ Add",
       "run.all": "Upscale all", "run.one": "Upscale 1 image", "run.n": "Upscale {n} images", "run.busy": "Processing…",
       "zip.label": "Download ZIP", "zip.n": "Download ZIP ({n})", "zip.prep": "Preparing ZIP…", "dl.one": "Download",
@@ -161,6 +164,9 @@ window.I18N = (function () {
 
       "bench.engine": "Enjin", "bench.size": "Saiz", "bench.format": "Format",
       "mode.fast": "Pantas",
+      "bench.look": "Hasil", "look.natural": "Asli", "look.enhanced": "Dipertingkat",
+      "note.natural": "Asli: muka dan rupa gambar asal dikekalkan, cuma lebih besar dan tajam.",
+      "note.enhanced": "Dipertingkat: perincian AI lebih kuat; muka mungkin jadi licin atau berubah.",
       "bench.add": "+ Tambah",
       "run.all": "Upscale semua", "run.one": "Upscale 1 gambar", "run.n": "Upscale {n} gambar", "run.busy": "Sedang memproses…",
       "zip.label": "Muat turun ZIP", "zip.n": "Muat turun ZIP ({n})", "zip.prep": "Menyediakan ZIP…", "dl.one": "Muat turun",

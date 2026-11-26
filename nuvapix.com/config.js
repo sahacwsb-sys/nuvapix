@@ -34,6 +34,10 @@ window.APP_CONFIG = {
     // Saiz kepingan (tile) yang diproses setiap kali: GPU / CPU
     tileSizeGPU: 256,
     tileSizeCPU: 128,
+    // Mod "Natural" (lalai): kekalkan muka/gambar asal, AI hanya menajamkan sedikit.
+    //   mix   = berapa banyak hasil AI dicampur (0 = asal sahaja, 1 = AI penuh)
+    //   limit = had perubahan setiap piksel (0–255). Kecil = lebih setia pada asal.
+    natural: { mix: 0.45, limit: 18 },
   },
 
   // Bahasa lalai: "en" (English) atau "ms" (Bahasa Melayu)

@@ -248,8 +248,34 @@
     return canvas;
   }
 
-  async function upscaleAI(img, { scale, maxSide, ai, onProgress = () => {} }) {
+  // Mod "Natural": kekalkan rupa asal (muka, kulit, warna). Asas = gambar asal
+  // dibesarkan biasa; AI hanya menambah sedikit ketajaman, dan perbezaan setiap
+  // piksel dihadkan supaya bentuk muka tidak berubah jadi seperti lukisan/kartun.
+  async function blendFaithful(base, ai, mix, limit) {
+    const w = base.width, h = base.height;
+    const bctx = base.getContext("2d", { willReadFrequently: true });
+    const actx = ai.getContext("2d", { willReadFrequently: true });
+    for (let y0 = 0; y0 < h; y0 += BAND) {
+      const rows = Math.min(BAND, h - y0);
+      const b = bctx.getImageData(0, y0, w, rows);
+      const a = actx.getImageData(0, y0, w, rows).data;
+      const d = b.data;
+      for (let i = 0; i < d.length; i += 4) {
+        for (let c = 0; c < 3; c++) {
+          let diff = (a[i + c] - d[i + c]) * mix;
+          if (diff > limit) diff = limit; else if (diff < -limit) diff = -limit;
+          d[i + c] += diff;
+        }
+      }
+      bctx.putImageData(b, 0, y0);
+      await tick();
+    }
+    return base;
+  }
+
+  async function upscaleAI(img, { scale, maxSide, ai, look = "natural", onProgress = () => {} }) {
     let src = toCanvas(img);
+    const orig = src;
     // Gambar terlalu besar → kecilkan dahulu supaya tidak terlalu lambat
     const longSide = Math.max(src.width, src.height);
     if (longSide > ai.maxInputSide) {
@@ -263,7 +289,11 @@
     const up = await runAI(src, ai, (p, label) => onProgress(0.15 + p * 0.8, label));
     onProgress(0.97, L("up.finishing"));
     await tick();
-    const final = up.width === t.w && up.height === t.h ? up : resize(up, t.w, t.h);
+    let final = up.width === t.w && up.height === t.h ? up : resize(up, t.w, t.h);
+    if (look === "natural") {
+      const f = ai.natural || { mix: 0.45, limit: 18 };
+      final = await blendFaithful(resize(orig, t.w, t.h), final, f.mix, f.limit);
+    }
     onProgress(1, L("up.done"));
     return final;
   }
