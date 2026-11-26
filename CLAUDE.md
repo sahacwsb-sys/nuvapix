@@ -5,9 +5,10 @@ Folder lama `~/Documents/website upscale saha` tidak digunakan lagi — jangan e
 
 ## Aliran automatik selepas setiap perubahan
 Selepas siap SETIAP perubahan pada fail website, terus jalankan langkah ini tanpa perlu tanya:
-1. `git add -A && git commit -m "<ringkasan perubahan>"` (di akar repo).
-2. `git push` ke GitHub (`main`).
-3. `zsh nuvapix.com/deploy.sh` supaya website live.
+1. `zsh nuvapix.com/stamp.sh` (kemas kini tag versi `?v=` CSS/JS dalam index.html).
+2. `git add -A && git commit -m "<ringkasan perubahan>"` (di akar repo).
+3. `git push` ke GitHub (`main`).
+4. `zsh nuvapix.com/deploy.sh` supaya website live.
    - Skrip hanya upload fail yang berubah, kemudian semak website pulangkan HTTP 200.
    - Jika gagal, laporkan ralat kepada pengguna. Jangan cuba cara lain untuk upload.
 
@@ -23,5 +24,5 @@ Peraturan:
   - `index.html` + `styles.css` + `config.js` + `i18n.js` + `upscaler.js` + `zip.js` + `app.js` — website sebenar.
   - `realesr-general-x4v3.onnx` — model AI dihoskan sendiri (`ai.modelUrl` dalam `config.js`).
   - `nuvapix.html` — versi satu fail untuk Claude Artifact; tidak dideploy.
-  - `deploy.sh`, `setup-deploy.sh`, `upload-netkl.sh`, `BACA-SAYA.md` — dalaman; tidak dideploy.
+  - `deploy.sh`, `stamp.sh`, `setup-deploy.sh`, `upload-netkl.sh`, `BACA-SAYA.md` — dalaman; tidak dideploy.
 - Teks UI dalam dua bahasa: kemas kini kedua-dua EN dan BM dalam `i18n.js`.

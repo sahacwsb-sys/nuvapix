@@ -16,7 +16,7 @@ STATE=.deploy-state
 # Fail yang TIDAK dihantar ke hosting
 EXCLUDE=(
   ./.DS_Store ./BACA-SAYA.md ./CLAUDE.md ./nuvapix.html ./nuvapix-upload.zip
-  ./deploy.sh ./deploy.conf ./setup-deploy.sh ./upload-netkl.sh ./.deploy-state ./.deploy-state.new
+  ./deploy.sh ./stamp.sh ./deploy.conf ./setup-deploy.sh ./upload-netkl.sh ./.deploy-state ./.deploy-state.new
 )
 
 FTP_PASS=$(security find-generic-password -s nuvapix-ftp -a "$FTP_USER" -w 2>/dev/null) \
@@ -25,6 +25,10 @@ NETRC=$(mktemp); chmod 600 "$NETRC"
 print "machine $FTP_HOST login $FTP_USER password $FTP_PASS" > "$NETRC"
 unset FTP_PASS
 trap 'rm -f "$NETRC" "$STATE.new"' EXIT
+
+# Kemas kini tag versi ?v= pada CSS/JS dalam index.html
+zsh ./stamp.sh || exit 1
+git diff --quiet -- index.html 2>/dev/null || echo "Amaran: stamp.sh ubah index.html — commit perubahan ini."
 
 TLS=(); [[ "$FTP_TLS" == 1 ]] && TLS=(--ssl-reqd)
 
