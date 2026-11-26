@@ -26,3 +26,11 @@ Peraturan:
   - `nuvapix.html` — versi satu fail untuk Claude Artifact; tidak dideploy.
   - `deploy.sh`, `stamp.sh`, `setup-deploy.sh`, `upload-netkl.sh`, `BACA-SAYA.md` — dalaman; tidak dideploy.
 - Teks UI dalam dua bahasa: kemas kini kedua-dua EN dan BM dalam `i18n.js`.
+
+## Akaun pengguna & admin
+- `account.js` (klien) + `api/` (PHP + SQLite di hosting): `auth.php` (daftar/log masuk/keluar), `usage.php` (kiraan kuota), `admin.php` (admin sahaja).
+- `admin.html` + `admin.js` — papan pemuka admin: tukar pakej Percuma/Asas/Pro, tarikh tamat, set semula kiraan, nyahaktif, tukar kata laluan, padam.
+- Pangkalan data: `../nuvapix-data/nuvapix.sqlite` di luar public_html (sandaran: `api/data/`, disekat .htaccess).
+- `api/local-config.php` — emel admin + hash bcrypt kata laluan. TIDAK di-commit (.gitignore) tetapi dideploy. Jangan paparkan isinya. Contoh: `api/local-config.example.php`.
+- Had kuota di server (`api/lib.php`: FREE_QUOTA, BASIC_QUOTA) mesti sama dengan `config.js` → `plans`.
+- Pembayaran belum ada: admin naik taraf pengguna secara manual melalui papan pemuka.

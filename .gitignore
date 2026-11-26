@@ -5,3 +5,6 @@ deploy.conf
 .deploy-state.new
 # Arkib zip
 *.zip
+# Rahsia akaun admin (hash kata laluan) & pangkalan data tempatan
+local-config.php
+nuvapix.com/api/data/

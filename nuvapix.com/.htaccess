@@ -32,6 +32,6 @@ AddType application/octet-stream .onnx
 </IfModule>
 
 # Sembunyikan fail yang bukan untuk awam
-<FilesMatch "\.(md|DS_Store)$">
+<FilesMatch "\.(md|DS_Store|sqlite|sqlite-wal|sqlite-shm)$">
   Require all denied
 </FilesMatch>

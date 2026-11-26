@@ -1,0 +1,8 @@
+# Hanya auth.php, usage.php, admin.php boleh dibuka dari luar.
+<FilesMatch "^(lib|local-config.*)\.php$">
+  Require all denied
+</FilesMatch>
+<FilesMatch "\.(sqlite|sqlite-wal|sqlite-shm|db)$">
+  Require all denied
+</FilesMatch>
+Options -Indexes

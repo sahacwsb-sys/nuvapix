@@ -17,6 +17,7 @@ STATE=.deploy-state
 EXCLUDE=(
   ./.DS_Store ./BACA-SAYA.md ./CLAUDE.md ./nuvapix.html ./nuvapix-upload.zip
   ./deploy.sh ./stamp.sh ./deploy.conf ./setup-deploy.sh ./upload-netkl.sh ./.deploy-state ./.deploy-state.new
+  ./api/local-config.example.php
 )
 
 FTP_PASS=$(security find-generic-password -s nuvapix-ftp -a "$FTP_USER" -w 2>/dev/null) \
@@ -28,13 +29,13 @@ trap 'rm -f "$NETRC" "$STATE.new"' EXIT
 
 # Kemas kini tag versi ?v= pada CSS/JS dalam index.html
 zsh ./stamp.sh || exit 1
-git diff --quiet -- index.html 2>/dev/null || echo "Amaran: stamp.sh ubah index.html — commit perubahan ini."
+git diff --quiet -- index.html admin.html 2>/dev/null || echo "Amaran: stamp.sh ubah index.html/admin.html — commit perubahan ini."
 
 TLS=(); [[ "$FTP_TLS" == 1 ]] && TLS=(--ssl-reqd)
 
 # Senarai fail semasa + hash
 : > "$STATE.new"
-find . -type f -not -path './.git/*' -not -path './.claude/*' -not -name '.DS_Store' | sort | while read -r f; do
+find . -type f -not -path './.git/*' -not -path './.claude/*' -not -path './api/data/*' -not -name '.DS_Store' | sort | while read -r f; do
   (( ${EXCLUDE[(Ie)$f]} )) && continue
   print "$(shasum -a 256 "$f" | cut -d' ' -f1) $f" >> "$STATE.new"
 done

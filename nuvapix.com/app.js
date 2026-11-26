@@ -7,8 +7,12 @@
   // =================== PAKEJ & KUOTA ===================
   // Fasa sekarang: CFG.freeLimit = 3 → 3 gambar percuma, kemudian paywall.
   // Demo tanpa ubah kod:  ?limit=3 (mod 3 percuma) · ?plan=basic · ?plan=pro · ?reset=1
-  // PENTING: Bila mula caj, pakej & kiraan MESTI disimpan di server (akaun pengguna).
-  const PLAN = ["basic", "pro"].includes(params.get("plan")) ? params.get("plan") : "free";
+  // Pengguna log masuk: pakej & kiraan disimpan di server (Account.status, lihat account.js).
+  // Tetamu: kiraan dalam localStorage.
+  const DEMO_PLAN = ["basic", "pro"].includes(params.get("plan")) ? params.get("plan") : "free";
+  let PLAN = DEMO_PLAN;
+  const acct = () => Account.status;
+  const syncPlan = () => { PLAN = acct() ? acct().plan : DEMO_PLAN; };
   const LIMIT = params.has("limit") ? Number(params.get("limit")) : CFG.freeLimit;
   const hasFreeLimit = () => LIMIT !== null && LIMIT !== undefined && !Number.isNaN(LIMIT);
   const usageKey = () => {
@@ -21,8 +25,14 @@
     set(v) { try { localStorage.setItem(usageKey(), String(v)); } catch {} },
   };
   if (params.has("reset")) store.set(0);
-  const quota = () => (PLAN === "pro" ? null : PLAN === "basic" ? CFG.plans.basic.quota : hasFreeLimit() ? LIMIT : null);
-  const remaining = () => { const q = quota(); return q === null ? Infinity : Math.max(0, q - store.get()); };
+  const quota = () => {
+    if (acct()) return acct().quota;
+    return PLAN === "pro" ? null : PLAN === "basic" ? CFG.plans.basic.quota : hasFreeLimit() ? LIMIT : null;
+  };
+  const remaining = () => {
+    if (acct()) return acct().remaining === null ? Infinity : acct().remaining;
+    const q = quota(); return q === null ? Infinity : Math.max(0, q - store.get());
+  };
   // Had gambar dalam satu kumpulan upload
   const batchCap = () => (PLAN === "pro" ? Infinity : PLAN === "basic" ? CFG.plans.basic.quota : CFG.maxBatch);
 
@@ -63,7 +73,7 @@
       <div class="price">${esc(price)} <small>${esc(per)}</small></div>
       <p class="equiv">${esc(equiv)}</p>
       <ul>${feats.map((f) => `<li>${esc(f)}</li>`).join("")}</ul>
-      <button class="btn ${p.highlight ? "btn-ink" : "btn-line"}" data-plan="${id}" type="button">${esc(t(`plan.${id}.cta`))}</button>
+      <button class="btn ${p.highlight ? "btn-ink" : "btn-line"}" data-plan="${id}" type="button" ${acct() && PLAN === id ? "disabled" : ""}>${esc(acct() && PLAN === id ? t("plan.current") : t(`plan.${id}.cta`))}</button>
     </div>`;
   }
   function renderPlans() {
@@ -79,7 +89,8 @@
     const b = e.target.closest("[data-plan]");
     if (!b) return;
     if (b.dataset.plan === "free") { paywall.hidden = true; window.scrollTo({ top: 0, behavior: "smooth" }); return; }
-    toast(t("pay.soon"));
+    if (!acct()) { paywall.hidden = true; openAuth("register", t("auth.toBuy")); return; }
+    toast(t("pay.soonAcct"), 5000);
   });
   document.querySelectorAll("[data-lang]").forEach((b) => b.addEventListener("click", () => I18N.set(b.dataset.lang)));
 
@@ -101,9 +112,78 @@
     $("pwTitle").textContent = PLAN !== "basic" ? t("pw.titleFree")
       : r > 0 ? t("pw.titleBasicLow", { n: r }) : t("pw.titleBasic", { n: CFG.plans.basic.quota });
     $("pwText").textContent = paywallDone ? t("pw.textDone", { n: paywallDone }) : t("pw.text");
+    $("pwAuth").hidden = !!acct();
   }
   paywall.addEventListener("click", (e) => { if (e.target.closest("[data-close]")) paywall.hidden = true; });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") paywall.hidden = true; });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") document.querySelectorAll(".modal").forEach((m) => (m.hidden = true)); });
+
+  // =================== AKAUN: DAFTAR / LOG MASUK ===================
+  const authModal = $("authModal"), acctModal = $("acctModal"), authForm = $("authForm");
+  let authTab = "login", authNote = "";
+  [authModal, acctModal].forEach((m) => m.addEventListener("click", (e) => { if (e.target.closest("[data-close]")) m.hidden = true; }));
+  function renderAuth() {
+    const reg = authTab === "register";
+    authModal.querySelectorAll("[data-auth-tab]").forEach((b) => b.classList.toggle("on", b.dataset.authTab === authTab));
+    $("authTitle").textContent = t(reg ? "auth.regTitle" : "auth.loginTitle");
+    $("authSub").textContent = authNote || t(reg ? "auth.regSub" : "auth.loginSub", { n: CFG.plans.free.quota });
+    $("nameField").hidden = !reg;
+    $("pwHint").hidden = !reg;
+    authForm.password.autocomplete = reg ? "new-password" : "current-password";
+    $("authSubmit").textContent = t(reg ? "auth.register" : "auth.login");
+  }
+  function openAuth(tab = "login", note = "") {
+    authTab = tab; authNote = note; $("authErr").hidden = true;
+    renderAuth(); authModal.hidden = false;
+    setTimeout(() => (reg() ? authForm.name : authForm.email).focus(), 30);
+  }
+  const reg = () => authTab === "register";
+  authModal.querySelector(".auth-tabs").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-auth-tab]"); if (!b) return;
+    authTab = b.dataset.authTab; $("authErr").hidden = true; renderAuth();
+  });
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-auth-open]"); if (!b) return;
+    paywall.hidden = true; openAuth(b.dataset.authOpen);
+  });
+  authForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = authForm.name.value.trim(), email = authForm.email.value.trim(), pw = authForm.password.value;
+    const err = (k) => { $("authErr").textContent = t(k); $("authErr").hidden = false; };
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return err("err.email");
+    if (pw.length < 8 && reg()) return err("err.password");
+    if (!pw) return err("err.invalid");
+    $("authSubmit").disabled = true;
+    try {
+      if (reg()) await Account.register(name, email, pw); else await Account.login(email, pw);
+      authForm.reset(); authModal.hidden = true;
+      toast(t(reg() ? "auth.welcomeNew" : "auth.welcome", { name: Account.user.name || Account.user.email }));
+    } catch (ex) {
+      err(`err.${["email", "password", "exists", "invalid", "disabled", "throttle", "network"].includes(ex.code) ? ex.code : "server"}`);
+    } finally { $("authSubmit").disabled = false; }
+  });
+
+  function renderAcct() {
+    const u = Account.user, b = $("acctBtn");
+    b.textContent = u ? (u.name || u.email.split("@")[0]) : t("auth.login");
+    b.classList.toggle("in", !!u);
+    b.title = u ? u.email : "";
+    if (!u) { acctModal.hidden = true; return; }
+    const s = acct(), dl = $("acctInfo");
+    const rows = [
+      ["acct.email", u.email],
+      ["acct.plan", t(`plan.${s.plan}.name`) + (u.role === "admin" ? " · Admin" : "")],
+    ];
+    if (s.plan !== "free" && u.planExpires && u.role !== "admin") rows.push(["acct.expires", u.planExpires]);
+    rows.push(["acct.usage", s.quota === null ? t("acct.usageUnlimited", { n: s.used }) : t(s.plan === "free" ? "acct.usageFree" : "acct.usageMonth", { n: s.used, total: s.quota })]);
+    dl.innerHTML = rows.map(([k, v]) => `<dt>${esc(t(k))}</dt><dd>${esc(v)}</dd>`).join("");
+    $("acctAdmin").hidden = !Account.isAdmin;
+    $("acctUpgrade").hidden = s.plan === "pro";
+  }
+  $("acctBtn").addEventListener("click", () => { if (Account.user) { renderAcct(); acctModal.hidden = false; } else openAuth("login"); });
+  $("acctLogout").addEventListener("click", async () => { await Account.logout(); toast(t("acct.loggedOut")); });
+  $("acctUpgrade").addEventListener("click", () => { acctModal.hidden = true; $("harga").scrollIntoView({ behavior: "smooth" }); });
+  if (location.hash === "#login") openAuth("login");
+  if (location.hash === "#daftar" || location.hash === "#signup") openAuth("register");
 
   // Dalam Claude Artifact, muat turun mesti melalui keupayaan "downloads".
   let dlCap = null;
@@ -460,7 +540,11 @@
         it.out = { blob, url: URL.createObjectURL(blob), w: canvas.width, h: canvas.height, scale, mode: used, secs: ((performance.now() - t0) / 1000).toFixed(1) };
         canvas.width = canvas.height = 0; // lepaskan memori
         it.status = "done";
-        if (!it.counted) { it.counted = true; store.set(store.get() + 1); }
+        if (!it.counted) {
+          it.counted = true;
+          if (acct()) await Account.consume(1).catch((e) => console.warn("usage:", e.code));
+          else store.set(store.get() + 1);
+        }
       } catch (err) {
         console.error(err);
         it.status = "error";
@@ -523,10 +607,13 @@
 
   // =================== BAHASA ===================
   function renderLang() {
-    renderStaticVars(); renderPlans(); renderSampleLabels(); renderUsage();
+    renderStaticVars(); renderPlans(); renderSampleLabels(); renderUsage(); renderAcct();
     if (!paywall.hidden) renderPaywallText();
+    if (!authModal.hidden) renderAuth();
     if (S.items.length) { renderFrames(); renderStatus(); renderViewer(); }
   }
   I18N.onChange(renderLang);
+  Account.onChange(() => { syncPlan(); renderLang(); });
   I18N.apply();
+  Account.refresh();
 })();
