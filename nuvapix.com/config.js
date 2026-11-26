@@ -23,8 +23,8 @@ window.APP_CONFIG = {
   // ---- Enjin AI (Real-ESRGAN, berjalan dalam browser pengguna) ----
   ai: {
     // Model Real-ESRGAN "realesr-general-x4v3" format ONNX (~4.9MB).
-    // Disyorkan: muat naik fail .onnx ke hosting sendiri dan tukar URL ini.
-    modelUrl: "https://huggingface.co/OwlMaster/AllFilesRope/resolve/main/realesr-general-x4v3.onnx",
+    // Fail .onnx dihoskan sendiri (folder sama dengan index.html).
+    modelUrl: "realesr-general-x4v3.onnx",
     // ONNX Runtime Web (pustaka untuk jalankan model AI dalam browser)
     ortUrl: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort.webgpu.min.js",
     ortWasmPath: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/",

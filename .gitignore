@@ -1,0 +1,7 @@
+.DS_Store
+# Login FTP & status deploy (tempatan sahaja)
+deploy.conf
+.deploy-state
+.deploy-state.new
+# Arkib zip
+*.zip

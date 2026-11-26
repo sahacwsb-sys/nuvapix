@@ -1,0 +1,1660 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<!-- BUILD:HEAD -->
+<title>Nuvapix</title>
+<meta name="claude:viewport-fit-sides" content="cover" />
+<meta name="description" content="Upscale images 2× or 4× with Real-ESRGAN AI. One image or many at once, right in your browser." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Schibsted+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<!-- /BUILD:HEAD -->
+<style>
+/* Konsep: makmal foto — meja cahaya (lightbox) dengan tanda potong,
+   helaian kontak untuk barisan gambar, warna dakwat proses CMYK. */
+:root {
+  --bg: #e8ecf0;          /* meja kerja kelabu-biru */
+  --paper: #f8fafb;       /* kertas foto */
+  --ink: #111a2b;         /* dakwat navy */
+  --muted: #5a6779;
+  --line: #cdd5df;
+  --cyan: #0094d4;        /* dakwat cyan */
+  --cyan-ink: #006a99;    /* cyan untuk teks atas latar cerah */
+  --magenta: #d6006f;     /* tanda daftar */
+  --ok: #138a52;
+  --warn: #b25e00;
+  --err: #c0262d;
+  --on-ink: #f8fafb;
+  --shadow: 0 1px 0 rgba(17,26,43,.04), 0 12px 32px -18px rgba(17,26,43,.35);
+  --f-display: "Bricolage Grotesque", "Avenir Next Condensed", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "Schibsted Grotesk", "Helvetica Neue", Arial, system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b0f16; --paper: #131924; --ink: #e6ecf4; --muted: #8e9bb0; --line: #263041;
+    --cyan: #33bdf5; --cyan-ink: #5fcdf8; --magenta: #ff4fa6; --ok: #3ccf8a; --warn: #f0a443; --err: #ff6b70;
+    --on-ink: #0b0f16; --shadow: 0 12px 32px -18px rgba(0,0,0,.8); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0b0f16; --paper: #131924; --ink: #e6ecf4; --muted: #8e9bb0; --line: #263041;
+  --cyan: #33bdf5; --cyan-ink: #5fcdf8; --magenta: #ff4fa6; --ok: #3ccf8a; --warn: #f0a443; --err: #ff6b70;
+  --on-ink: #0b0f16; --shadow: 0 12px 32px -18px rgba(0,0,0,.8); color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 60; background: var(--bg); }
+h1, h2, h3, .logo { font-family: var(--f-display); text-wrap: balance; }
+img, canvas { display: block; max-width: 100%; }
+a { color: inherit; }
+[hidden] { display: none !important; }
+.wrap { width: 100%; max-width: 1200px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.mono { font-family: var(--f-mono); letter-spacing: .02em; }
+.small { font-size: 12.5px; }
+.muted { color: var(--muted); }
+:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+
+/* TOPBAR */
+.topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 50; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.topbar-inner { display: flex; align-items: center; gap: 24px; height: 60px; }
+.logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 20px; text-decoration: none; letter-spacing: -.02em; }
+.logo-mark { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; width: 22px; height: 22px; }
+.logo-mark i { display: block; border-radius: 1px; }
+.logo-mark i:nth-child(1) { background: var(--cyan); }
+.logo-mark i:nth-child(2) { background: var(--magenta); }
+.logo-mark i:nth-child(3) { background: #f2c200; }
+.logo-mark i:nth-child(4) { background: var(--ink); }
+.toplinks { display: flex; gap: 22px; margin-left: auto; font-size: 14.5px; font-weight: 500; }
+.toplinks a { text-decoration: none; color: var(--muted); }
+.toplinks a:hover { color: var(--ink); }
+.lang { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--paper); }
+.lang button { font: inherit; font-family: var(--f-mono); font-size: 12px; font-weight: 600; padding: 5px 9px; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
+.lang button + button { border-left: 1px solid var(--line); }
+.lang button[aria-pressed="true"] { background: var(--ink); color: var(--on-ink); }
+.quota { font-family: var(--f-mono); font-size: 12px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); white-space: nowrap; }
+.quota.warn { border-color: var(--warn); color: var(--warn); }
+
+/* BUTTONS */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: inherit; font-weight: 600; font-size: 15px; padding: 11px 18px; border-radius: 8px; border: 1px solid transparent; cursor: pointer; transition: transform .12s, background .2s, border-color .2s, opacity .2s; white-space: nowrap; }
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn-ink { background: var(--ink); color: var(--on-ink); }
+.btn-ink:hover:not(:disabled) { background: color-mix(in srgb, var(--ink) 85%, var(--cyan)); }
+.btn-cyan { background: var(--cyan); color: #fff; }
+.btn-cyan:hover:not(:disabled) { background: color-mix(in srgb, var(--cyan) 85%, var(--ink)); }
+.btn-line { background: var(--paper); color: var(--ink); border-color: var(--line); }
+.btn-line:hover:not(:disabled) { border-color: var(--ink); }
+.link-btn { background: none; border: 0; padding: 0; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--cyan-ink); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+
+/* HERO */
+.hero { padding-block: 56px 48px; }
+.hero-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 56px; align-items: center; }
+.eyebrow { margin: 0 0 18px; font-size: 12.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
+h1 { font-size: clamp(38px, 5.6vw, 68px); line-height: .98; letter-spacing: -.035em; margin: 0 0 20px; font-weight: 800; }
+h1 .hl { color: var(--cyan-ink); }
+.lead { font-size: 18px; color: var(--muted); max-width: 54ch; margin: 0 0 28px; }
+
+.lightbox { position: relative; background: var(--paper); border: 1.5px dashed var(--line); border-radius: 4px; padding: 26px; cursor: pointer; transition: border-color .2s, background .2s; outline: none; }
+.lightbox:hover, .lightbox:focus-visible { border-color: var(--cyan); }
+.lightbox.over { border-color: var(--cyan); background: color-mix(in srgb, var(--cyan) 8%, var(--paper)); }
+.crop { position: absolute; width: 14px; height: 14px; border-color: var(--magenta); border-style: solid; border-width: 0; }
+.crop.tl { top: -8px; left: -8px; border-top-width: 2px; border-left-width: 2px; }
+.crop.tr { top: -8px; right: -8px; border-top-width: 2px; border-right-width: 2px; }
+.crop.bl { bottom: -8px; left: -8px; border-bottom-width: 2px; border-left-width: 2px; }
+.crop.br { bottom: -8px; right: -8px; border-bottom-width: 2px; border-right-width: 2px; }
+.lb-body { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.lb-body > div { flex: 1; min-width: 200px; }
+.lb-ico { color: var(--cyan-ink); flex: none; }
+.lb-title { margin: 0; font-family: var(--f-display); font-weight: 700; font-size: 21px; }
+.lb-sub { margin: 2px 0 0; font-size: 13.5px; color: var(--muted); }
+kbd { font-family: var(--f-mono); font-size: 11px; padding: 1px 5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; background: var(--bg); }
+.samples { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 18px; color: var(--muted); }
+.sample-row { display: flex; gap: 8px; }
+.sample-row button { width: 46px; height: 46px; padding: 0; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; cursor: pointer; background: var(--paper); transition: transform .15s, border-color .15s; }
+.sample-row button:hover { transform: translateY(-2px); border-color: var(--ink); }
+.sample-row canvas { width: 100%; height: 100%; }
+
+.loupe-card { margin: 0; background: var(--paper); border: 1px solid var(--line); border-radius: 4px; padding: 12px; box-shadow: var(--shadow); }
+#loupe { width: 100%; aspect-ratio: 4 / 3; border-radius: 2px; cursor: none; touch-action: none; background: var(--bg); }
+.loupe-card figcaption { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 12px 4px 2px; color: var(--ink); }
+.loupe-card figcaption b { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+.dot-c { background: var(--cyan); } .dot-m { background: var(--magenta); }
+
+/* BENCH */
+.bench { padding-block: 8px 48px; scroll-margin-top: 72px; }
+.bench-bar { display: flex; flex-wrap: wrap; align-items: end; gap: 14px 22px; padding: 14px; background: var(--paper); border: 1px solid var(--line); border-radius: 6px; }
+.bar-group { display: grid; gap: 6px; }
+.bar-label { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.toggle { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; background: var(--bg); }
+.toggle button { font: inherit; font-size: 14px; font-weight: 600; padding: 8px 14px; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
+.toggle button + button { border-left: 1px solid var(--line); }
+.toggle button.on { background: var(--ink); color: var(--on-ink); }
+.bar-actions { display: flex; gap: 10px; margin-left: auto; flex-wrap: wrap; }
+
+.batch-status { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 16px; padding: 14px 4px; }
+.bs-text { font-size: 14.5px; }
+.bs-bar { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.bs-bar div { height: 100%; width: 0; background: var(--cyan); transition: width .3s; }
+
+.bench-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 18px; align-items: start; }
+.viewer { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 12px; min-width: 0; }
+.compare { position: relative; overflow: hidden; border-radius: 2px; aspect-ratio: 4 / 3; max-height: 70vh; margin: 0 auto; max-width: 100%; user-select: none; touch-action: none; cursor: ew-resize;
+  background-color: var(--bg); background-image: linear-gradient(45deg, var(--line) 25%, transparent 25%, transparent 75%, var(--line) 75%), linear-gradient(45deg, var(--line) 25%, transparent 25%, transparent 75%, var(--line) 75%); background-size: 18px 18px; background-position: 0 0, 9px 9px; }
+.compare img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; transform-origin: var(--ox, 50%) var(--oy, 50%); transform: scale(var(--z, 1)); }
+#imgBefore { image-rendering: pixelated; }
+.compare-after { position: absolute; inset: 0; clip-path: inset(0 0 0 var(--pos, 50%)); }
+.compare-handle { position: absolute; top: 0; bottom: 0; left: var(--pos, 50%); width: 2px; background: var(--cyan); transform: translateX(-50%); pointer-events: none; }
+.compare-handle span { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--cyan); color: #fff; font-size: 16px; font-weight: 700; box-shadow: 0 4px 14px rgba(0,0,0,.25); }
+.ctag { position: absolute; top: 10px; font-size: 11px; padding: 3px 8px; border-radius: 4px; background: rgba(17,26,43,.78); color: #fff; pointer-events: none; }
+.ctag-l { left: 10px; } .ctag-r { right: 10px; background: var(--cyan); }
+.compare.no-result { cursor: default; }
+.compare.no-result .compare-after, .compare.no-result .compare-handle, .compare.no-result .ctag-r { display: none; }
+.working { position: absolute; inset: 0; display: grid; place-items: center; background: color-mix(in srgb, var(--paper) 55%, transparent); }
+.working-box { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 16px 18px; min-width: 240px; box-shadow: var(--shadow); }
+.working-box p { margin: 0 0 10px; font-size: 13px; }
+.wbar { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.wbar div { height: 100%; width: 0; background: repeating-linear-gradient(90deg, var(--cyan) 0 10px, var(--magenta) 10px 14px); transition: width .2s; }
+.viewer-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 2px 0; }
+.viewer-foot p { margin: 0; color: var(--muted); }
+.zoom-row { display: flex; align-items: center; gap: 8px; min-width: 200px; }
+.zoom-row input { flex: 1; accent-color: var(--cyan); }
+
+.sheet { background: var(--ink); color: var(--on-ink); border-radius: 6px; padding: 12px; min-width: 0; max-height: 78vh; display: flex; flex-direction: column; }
+.sheet-head { display: flex; justify-content: space-between; align-items: center; padding: 0 2px 10px; }
+.sheet-head p { margin: 0; text-transform: uppercase; letter-spacing: .1em; opacity: .7; }
+.sheet .link-btn { color: var(--on-ink); opacity: .8; }
+.frames { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; overflow-y: auto; }
+.frame { display: grid; grid-template-columns: 22px 56px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 8px; border-radius: 4px; border: 1px solid color-mix(in srgb, var(--on-ink) 14%, transparent); cursor: pointer; transition: border-color .15s, background .15s; }
+.frame:hover { border-color: color-mix(in srgb, var(--on-ink) 35%, transparent); }
+.frame.sel { border-color: var(--cyan); background: color-mix(in srgb, var(--cyan) 14%, transparent); }
+.f-no { font-family: var(--f-mono); font-size: 11px; opacity: .6; writing-mode: vertical-rl; transform: rotate(180deg); text-align: center; }
+.f-thumb { width: 56px; height: 42px; object-fit: cover; border-radius: 2px; background: color-mix(in srgb, var(--on-ink) 10%, transparent); }
+.f-info { min-width: 0; }
+.f-name { font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.f-meta { font-family: var(--f-mono); font-size: 11px; opacity: .7; font-variant-numeric: tabular-nums; }
+.f-status { font-family: var(--f-mono); font-size: 10.5px; display: inline-block; margin-top: 3px; padding: 1px 6px; border-radius: 3px; border: 1px solid currentColor; }
+.st-queued { color: color-mix(in srgb, var(--on-ink) 70%, transparent); }
+.st-processing { color: var(--cyan); }
+.st-done { color: var(--ok); }
+.st-error { color: var(--err); }
+.f-acts { display: flex; flex-direction: column; gap: 4px; }
+.f-acts button { width: 28px; height: 28px; border-radius: 4px; border: 1px solid color-mix(in srgb, var(--on-ink) 20%, transparent); background: transparent; color: var(--on-ink); cursor: pointer; font-size: 13px; line-height: 1; display: grid; place-items: center; }
+.f-acts button:hover:not(:disabled) { border-color: var(--cyan); color: var(--cyan); }
+.f-acts button:disabled { opacity: .3; cursor: default; }
+.ai-note { color: var(--muted); margin: 12px 2px 0; }
+
+/* SPEC */
+.spec { border-block: 1px solid var(--line); background: var(--paper); }
+.spec-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.spec-grid div { padding-block: 22px; padding-inline: 0 18px; display: grid; gap: 4px; }
+.spec-grid div + div { border-left: 1px solid var(--line); padding-left: 18px; }
+.spec-grid span { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.spec-grid b { font-weight: 600; font-size: 15px; }
+
+/* BLOCKS */
+.block { padding-block: 80px 8px; }
+h2 { font-size: clamp(30px, 3.6vw, 44px); letter-spacing: -.03em; line-height: 1.05; margin: 0 0 28px; font-weight: 800; }
+.sub { color: var(--muted); margin: -12px 0 28px; }
+.steps { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 2px solid var(--ink); }
+.steps li { display: flex; gap: 14px; padding: 22px 22px 22px 0; }
+.steps li + li { padding-left: 22px; border-left: 1px solid var(--line); }
+.step-n { flex: none; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; border: 1.5px solid var(--magenta); color: var(--magenta); font-size: 13px; font-weight: 600; }
+.steps h3, .use h3 { margin: 2px 0 6px; font-size: 20px; letter-spacing: -.01em; }
+.steps p, .use p { margin: 0; color: var(--muted); }
+.uses { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin-top: 48px; }
+.use { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 22px; }
+.use h3::before { content: ""; display: block; width: 26px; height: 3px; background: var(--cyan); margin-bottom: 14px; }
+
+.soon { font-size: 11px; text-transform: uppercase; padding: 3px 7px; border-radius: 4px; border: 1px solid var(--warn); color: var(--warn); margin-right: 6px; }
+.price-head { display: flex; justify-content: space-between; align-items: end; gap: 16px 24px; flex-wrap: wrap; margin-bottom: 28px; }
+.price-head h2, .price-head .sub { margin-bottom: 0; }
+.price-head .sub { margin-top: 10px; }
+.billing { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--paper); }
+.billing button { font: inherit; font-size: 14px; font-weight: 600; padding: 9px 16px; border: 0; background: transparent; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+.billing button + button { border-left: 1px solid var(--line); }
+.billing button.on { background: var(--ink); color: var(--on-ink); }
+.save { font-style: normal; font-size: 10.5px; padding: 2px 6px; border-radius: 3px; background: var(--magenta); color: #fff; }
+.billing-sm { margin-top: 16px; }
+.equiv { font-family: var(--f-mono); font-size: 12px; color: var(--muted); margin: -10px 0 16px; min-height: 1.4em; }
+.plans { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.plan { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 24px; display: flex; flex-direction: column; text-align: left; }
+.plan.hl { border: 2px solid var(--ink); position: relative; }
+.plan.hl::after { content: attr(data-badge); position: absolute; top: -11px; right: 18px; font-family: var(--f-mono); font-size: 11px; background: var(--magenta); color: #fff; padding: 2px 8px; border-radius: 3px; }
+.plan h3 { margin: 0; font-size: 18px; }
+.price { font-family: var(--f-display); font-size: 42px; font-weight: 800; letter-spacing: -.03em; margin: 6px 0 16px; font-variant-numeric: tabular-nums; }
+.price small { font-family: var(--f-mono); font-size: 12px; font-weight: 400; color: var(--muted); letter-spacing: 0; }
+.plan ul { list-style: none; padding: 0; margin: 0 0 22px; display: grid; gap: 8px; flex: 1; font-size: 14.5px; }
+.plan li { padding-left: 20px; position: relative; }
+.plan li::before { content: ""; position: absolute; left: 0; top: .5em; width: 9px; height: 9px; background: var(--cyan); border-radius: 1px; }
+
+.faq-wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 32px; }
+.faq details { border-top: 1px solid var(--line); padding: 16px 0; }
+.faq details:last-child { border-bottom: 1px solid var(--line); }
+.faq summary { font-weight: 600; font-size: 17px; cursor: pointer; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: "+"; font-family: var(--f-mono); color: var(--magenta); }
+.faq details[open] summary::after { content: "−"; }
+.faq p { margin: 10px 0 0; color: var(--muted); max-width: 62ch; }
+
+.foot { margin-top: 80px; border-top: 1px solid var(--line); padding-block: 24px 32px; font-size: 14px; }
+.foot-inner { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+/* MODAL & TOAST */
+.modal { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 16px; }
+.modal-back { position: absolute; inset: 0; background: rgba(11,15,22,.6); }
+.modal-card { position: relative; width: 100%; max-width: 820px; max-height: 92vh; overflow: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 30px; }
+.modal-card h3 { margin: 0 0 6px; font-size: 28px; }
+.modal-x { position: absolute; top: 12px; right: 12px; width: 34px; height: 34px; border-radius: 6px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font-size: 18px; cursor: pointer; }
+.plans-modal { margin: 22px 0 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 120; background: var(--ink); color: var(--on-ink); padding: 11px 16px; border-radius: 8px; font-size: 14px; font-weight: 500; max-width: calc(100% - 32px); box-shadow: var(--shadow); }
+
+/* RESPONSIVE */
+@media (max-width: 980px) {
+  .hero-grid, .bench-grid, .faq-wrap { grid-template-columns: minmax(0, 1fr); }
+  .sheet { max-height: none; }
+  .frames { max-height: 420px; }
+  .plans, .uses { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .spec-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .spec-grid div:nth-child(3) { border-left: 0; padding-left: 0; }
+  .spec-grid div:nth-child(n+3) { border-top: 1px solid var(--line); }
+  .bar-actions { margin-left: 0; }
+}
+@media (max-width: 640px) {
+  .toplinks { display: none; }
+  .topbar-inner { gap: 10px; }
+  .lang { margin-left: auto; }
+  .quota { max-width: 40vw; overflow: hidden; text-overflow: ellipsis; }
+  .hero { padding-block: 32px 32px; }
+  .steps, .plans, .uses { grid-template-columns: minmax(0, 1fr); }
+  .steps li + li { padding-left: 0; border-left: 0; border-top: 1px solid var(--line); }
+  .lightbox { padding: 20px; }
+  .lb-body .btn { width: 100%; }
+  .bar-actions, .bar-actions .btn { flex: 1; }
+  .batch-status { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .block { padding-block: 56px 8px; }
+  .modal-card { padding: 22px 16px; }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; } }
+
+</style>
+</head>
+<body>
+<!-- BUILD:BODY -->
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <a href="#" class="logo" aria-label="Nuvapix">
+      <span class="logo-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <span data-brand>Nuvapix</span>
+    </a>
+    <nav class="toplinks">
+      <a href="#cara" data-i18n="nav.how">How it works</a>
+      <a href="#harga" data-i18n="nav.pricing">Pricing</a>
+      <a href="#soalan" data-i18n="nav.faq">FAQ</a>
+    </nav>
+    <div class="lang" role="group" data-i18n-aria="lang.label" aria-label="Language">
+      <button type="button" data-lang="en" aria-pressed="true">EN</button>
+      <button type="button" data-lang="ms" aria-pressed="false">BM</button>
+    </div>
+    <span class="quota" id="usagePill">Free · unlimited</span>
+  </div>
+</header>
+
+<main>
+  <!-- HERO -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div class="hero-left">
+        <p class="eyebrow mono" data-i18n="hero.eyebrow">Real-ESRGAN · 2× / 4× · one or many</p>
+        <h1><span data-i18n="hero.h1a">Enlarge your images.</span><br /><span class="hl" data-i18n="hero.h1b">Keep every detail.</span></h1>
+        <p class="lead" data-i18n="hero.lead">Add one image or ten at once. The AI rebuilds edges and texture as it enlarges, then you download them one by one or all together in a single ZIP file.</p>
+
+        <div class="lightbox" id="dropZone" tabindex="0" role="button" data-i18n-aria="drop.aria" aria-label="Choose images to upload">
+          <span class="crop tl"></span><span class="crop tr"></span><span class="crop bl"></span><span class="crop br"></span>
+          <div class="lb-body">
+            <svg class="lb-ico" viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="10" width="28" height="22" rx="2"/><rect x="14" y="18" width="28" height="22" rx="2" fill="var(--paper)"/><circle cx="22" cy="26" r="2.5"/><path d="M42 34l-8-7-12 11"/></svg>
+            <div>
+              <p class="lb-title" data-i18n="drop.title">Drop images here</p>
+              <p class="lb-sub" id="dropSub">JPG, PNG, WEBP · up to 30 images at once</p>
+            </div>
+            <button class="btn btn-ink" id="pickBtn" type="button" data-i18n="drop.pick">Choose images</button>
+          </div>
+          <input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp" multiple hidden />
+        </div>
+        <div class="samples">
+          <span class="mono small" data-i18n="samples.label">No image? Try a sample:</span>
+          <div class="sample-row" id="sampleRow"></div>
+          <button class="link-btn" id="sampleAllBtn" type="button" data-i18n="samples.all">Load all three</button>
+        </div>
+      </div>
+
+      <figure class="loupe-card">
+        <canvas id="loupe" data-i18n-aria="loupe.aria" aria-label="Magnifier demo"></canvas>
+        <figcaption class="mono small">
+          <span><b class="dot-c"></b> <span data-i18n="loupe.in">Inside the lens: high resolution</span></span>
+          <span><b class="dot-m"></b> <span data-i18n="loupe.out">Outside: original 120×90 px</span></span>
+          <span class="muted" data-i18n="loupe.note">Illustration · move your pointer</span>
+        </figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- WORKBENCH -->
+  <section class="bench" id="bench" hidden>
+    <div class="wrap">
+      <div class="bench-bar">
+        <div class="bar-group">
+          <span class="bar-label mono" data-i18n="bench.engine">Engine</span>
+          <div class="toggle" id="modeSeg" role="group">
+            <button type="button" data-mode="ai" class="on">AI Real-ESRGAN</button>
+            <button type="button" data-mode="classic" data-i18n="mode.fast">Fast</button>
+          </div>
+        </div>
+        <div class="bar-group">
+          <span class="bar-label mono" data-i18n="bench.size">Size</span>
+          <div class="toggle" id="scaleSeg" role="group">
+            <button type="button" data-scale="2">2×</button>
+            <button type="button" data-scale="4" class="on">4×</button>
+          </div>
+        </div>
+        <div class="bar-group">
+          <span class="bar-label mono" data-i18n="bench.format">Format</span>
+          <div class="toggle" id="fmtSeg" role="group">
+            <button type="button" data-fmt="png" class="on">PNG</button>
+            <button type="button" data-fmt="jpeg">JPG</button>
+          </div>
+        </div>
+        <div class="bar-actions">
+          <button class="btn btn-line" id="addBtn" type="button" data-i18n="bench.add">+ Add</button>
+          <button class="btn btn-cyan" id="runBtn" type="button">Upscale all</button>
+          <button class="btn btn-ink" id="zipBtn" type="button" disabled>Download ZIP</button>
+        </div>
+      </div>
+
+      <div class="batch-status">
+        <div class="bs-text"><b id="bsMain">0 / 0</b> <span class="muted" id="bsSub"></span></div>
+        <div class="bs-bar"><div id="bsFill"></div></div>
+      </div>
+
+      <div class="bench-grid">
+        <div class="viewer">
+          <div class="compare no-result" id="compare">
+            <img id="imgBefore" alt="" />
+            <div class="compare-after"><img id="imgAfter" alt="" /></div>
+            <div class="compare-handle"><span aria-hidden="true">⇆</span></div>
+            <span class="ctag ctag-l mono" data-i18n="tag.orig">Original</span>
+            <span class="ctag ctag-r mono">AI</span>
+            <div class="working" id="working" hidden>
+              <div class="working-box">
+                <p class="mono" id="procText">…</p>
+                <div class="wbar"><div id="barFill"></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="viewer-foot">
+            <p class="mono small" id="viewerMeta">—</p>
+            <div class="zoom-row">
+              <label class="mono small" for="zoom" data-i18n="zoom">Zoom</label>
+              <input type="range" id="zoom" min="1" max="4" step="0.25" value="1" />
+              <span class="mono small" id="zoomVal">1×</span>
+            </div>
+          </div>
+        </div>
+
+        <aside class="sheet">
+          <div class="sheet-head">
+            <p class="mono small" data-i18n="sheet.title">Contact sheet</p>
+            <button class="link-btn" id="clearBtn" type="button" data-i18n="sheet.clear">Clear</button>
+          </div>
+          <ol class="frames" id="frames"></ol>
+        </aside>
+      </div>
+      <p class="ai-note mono small" id="aiNote"></p>
+    </div>
+  </section>
+
+  <!-- SPEC STRIP -->
+  <section class="spec">
+    <div class="wrap spec-grid">
+      <div><span class="mono" data-i18n="spec.model">Model</span><b>realesr-general-x4v3</b></div>
+      <div><span class="mono" data-i18n="spec.size">Model size</span><b data-i18n="spec.sizeV">4.9 MB, downloaded once</b></div>
+      <div><span class="mono" data-i18n="spec.proc">Processing</span><b data-i18n="spec.procV">GPU (WebGPU) or CPU</b></div>
+      <div><span class="mono" data-i18n="spec.yours">Your images</span><b data-i18n="spec.yoursV">Stay on your device</b></div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="block" id="cara">
+    <div class="wrap">
+      <h2 data-i18n="how.title">How it works</h2>
+      <ol class="steps">
+        <li><span class="step-n mono">1</span><div><h3 data-i18n="how.1h">Add your images</h3><p data-i18n="how.1p"></p></div></li>
+        <li><span class="step-n mono">2</span><div><h3 data-i18n="how.2h">Pick 2× or 4×</h3><p data-i18n="how.2p"></p></div></li>
+        <li><span class="step-n mono">3</span><div><h3 data-i18n="how.3h">Check and save</h3><p data-i18n="how.3p"></p></div></li>
+      </ol>
+      <div class="uses">
+        <div class="use"><h3 data-i18n="use.1h">Online sellers</h3><p data-i18n="use.1p"></p></div>
+        <div class="use"><h3 data-i18n="use.2h">Old &amp; family photos</h3><p data-i18n="use.2p"></p></div>
+        <div class="use"><h3 data-i18n="use.3h">Logos &amp; graphics</h3><p data-i18n="use.3p"></p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRICING -->
+  <section class="block" id="harga">
+    <div class="wrap">
+      <div class="price-head">
+        <div>
+          <h2 data-i18n="price.title">Pricing</h2>
+          <p class="sub"><span class="soon mono" data-i18n="price.soon">Coming soon</span> <span data-i18n="price.sub">Right now every feature is free with no limit.</span></p>
+        </div>
+        <div class="billing" role="group">
+          <button type="button" data-bill="monthly" class="on" data-i18n="bill.monthly">Monthly</button>
+          <button type="button" data-bill="yearly"><span data-i18n="bill.yearly">Yearly</span> <em class="save mono" data-i18n="bill.save">2 months free</em></button>
+        </div>
+      </div>
+      <div class="plans" id="plans"></div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="block" id="soalan">
+    <div class="wrap faq-wrap">
+      <h2 data-i18n="faq.title">FAQ</h2>
+      <div class="faq">
+        <details><summary data-i18n="faq.1q"></summary><p data-i18n="faq.1a"></p></details>
+        <details><summary data-i18n="faq.2q"></summary><p id="faq2a"></p></details>
+        <details><summary data-i18n="faq.3q"></summary><p data-i18n="faq.3a"></p></details>
+        <details><summary data-i18n="faq.4q"></summary><p data-i18n="faq.4a"></p></details>
+        <details><summary data-i18n="faq.5q"></summary><p data-i18n="faq.5a"></p></details>
+        <details><summary data-i18n="faq.6q"></summary><p data-i18n="faq.6a"></p></details>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap foot-inner">
+    <span>© <span id="year"></span> <span data-brand>Nuvapix</span></span>
+    <span class="mono small muted" data-i18n="foot.made">Made in Malaysia · Real-ESRGAN (BSD-3)</span>
+  </div>
+</footer>
+
+<div class="modal" id="paywall" hidden>
+  <div class="modal-back" data-close></div>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="pwTitle">
+    <button class="modal-x" data-close data-i18n-aria="pw.close" aria-label="Close">×</button>
+    <h3 id="pwTitle"></h3>
+    <p class="muted" id="pwText"></p>
+    <div class="billing billing-sm" role="group">
+      <button type="button" data-bill="monthly" class="on" data-i18n="bill.monthly">Monthly</button>
+      <button type="button" data-bill="yearly"><span data-i18n="bill.yearly">Yearly</span> <em class="save mono" data-i18n="bill.save">2 months free</em></button>
+    </div>
+    <div class="plans plans-modal" id="plansModal"></div>
+    <p class="mono small muted" data-i18n="pw.demo">Payments are not active yet. This is a demo.</p>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+<!-- /BUILD:BODY -->
+
+<script>
+// =====================================================
+//  TETAPAN WEBSITE — ubah di sini sahaja
+// =====================================================
+window.APP_CONFIG = {
+  // Nama jenama yang dipaparkan
+  brandName: "Nuvapix",
+
+  // Had upscale percuma bagi setiap pengguna.
+  //   null  = tanpa had (fasa sekarang: percuma sepenuhnya)
+  //   3     = 3 gambar percuma, lepas tu kena bayar
+  // Untuk demo paywall, buka:  index.html?limit=3
+  freeLimit: null,
+
+  // Saiz output maksimum (lebar atau tinggi, piksel) supaya browser tak crash
+  maxOutputSide: 8000,
+
+  // Saiz fail input maksimum (MB)
+  maxFileMB: 25,
+
+  // Bilangan gambar maksimum dalam satu kumpulan (upload pukal)
+  maxBatch: 30,
+
+  // ---- Enjin AI (Real-ESRGAN, berjalan dalam browser pengguna) ----
+  ai: {
+    // Model Real-ESRGAN "realesr-general-x4v3" format ONNX (~4.9MB).
+    // Disyorkan: muat naik fail .onnx ke hosting sendiri dan tukar URL ini.
+    modelUrl: "https://huggingface.co/OwlMaster/AllFilesRope/resolve/main/realesr-general-x4v3.onnx",
+    // ONNX Runtime Web (pustaka untuk jalankan model AI dalam browser)
+    ortUrl: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort.webgpu.min.js",
+    ortWasmPath: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/",
+    // Kosongkan biasanya. Hanya diisi bila fail .wasm perlu dihoskan sendiri.
+    wasmBinaryUrl: "",
+    // Sisi terpanjang gambar input untuk mod AI (lebih besar = lebih lambat)
+    maxInputSide: 1200,
+    // Saiz kepingan (tile) yang diproses setiap kali: GPU / CPU
+    tileSizeGPU: 256,
+    tileSizeCPU: 128,
+  },
+
+  // Bahasa lalai: "en" (English) atau "ms" (Bahasa Melayu)
+  defaultLang: "en",
+
+  // Pakej langganan. Teks nama & ciri ada dalam i18n.js (dua bahasa).
+  //   quota = bilangan gambar sebulan (null = tanpa had)
+  //   Pilihan tahunan hanya untuk Pro (= 10 bulan, percuma 2 bulan). Asas bulanan sahaja.
+  // Untuk demo pakej tanpa ubah kod: index.html?plan=basic atau ?plan=pro
+  plans: {
+    free:  { quota: 3 },
+    basic: { quota: 500,  monthly: "RM9.90" },
+    pro:   { quota: null, monthly: "RM29",   yearly: "RM290", yearlyPerMonth: "RM24.17", highlight: true },
+  },
+};
+
+</script>
+<script>
+// =====================================================
+//  DWIBAHASA: English (en) & Bahasa Melayu (ms)
+//  Tambah/ubah teks di sini. {nama} = nilai yang diisi semasa paparan.
+// =====================================================
+window.I18N = (function () {
+  const dict = {
+    en: {
+      "meta.desc": "Upscale images 2× or 4× with Real-ESRGAN AI. One image or many at once, right in your browser.",
+      "nav.how": "How it works", "nav.pricing": "Pricing", "nav.faq": "FAQ",
+      "lang.label": "Language",
+
+      "quota.unlimited": "Free · unlimited",
+      "quota.left": "{n}/{total} free left",
+      "quota.none": "No free images left",
+      "quota.basic": "Basic · {n}/{total} left this month",
+      "quota.pro": "Pro · unlimited",
+
+      "hero.eyebrow": "Real-ESRGAN · 2× / 4× · one or many",
+      "hero.h1a": "Enlarge your images.",
+      "hero.h1b": "Keep every detail.",
+      "hero.lead": "Add one image or ten at once. The AI rebuilds edges and texture as it enlarges, then you download them one by one or all together in a single ZIP file.",
+      "drop.aria": "Choose images to upload",
+      "drop.title": "Drop images here",
+      "drop.subBatch": "JPG, PNG, WEBP · up to {n} images at once · paste with <kbd>Ctrl</kbd>+<kbd>V</kbd>",
+      "drop.subUnlimited": "JPG, PNG, WEBP · as many images as you like · paste with <kbd>Ctrl</kbd>+<kbd>V</kbd>",
+      "drop.pick": "Choose images",
+      "samples.label": "No image? Try a sample:",
+      "samples.all": "Load all three",
+      "samples.aria": "Sample: {name}",
+      "loupe.aria": "Magnifier demo: the area inside the circle shows high resolution",
+      "loupe.in": "Inside the lens: high resolution",
+      "loupe.out": "Outside: original 120×90 px",
+      "loupe.note": "Illustration · move your pointer",
+
+      "bench.engine": "Engine", "bench.size": "Size", "bench.format": "Format",
+      "mode.fast": "Fast",
+      "bench.add": "+ Add",
+      "run.all": "Upscale all", "run.one": "Upscale 1 image", "run.n": "Upscale {n} images", "run.busy": "Processing…",
+      "zip.label": "Download ZIP", "zip.n": "Download ZIP ({n})", "zip.prep": "Preparing ZIP…", "dl.one": "Download",
+      "zip.name": "nuvapix-{n}-images.zip",
+      "bs.done": "{d} / {n} done", "bs.cur": "· processing {name}", "bs.err": "· {n} failed", "bs.wait": "· {n} waiting", "bs.all": "· all done",
+      "tag.orig": "Original",
+      "zoom": "Zoom",
+      "sheet.title": "Contact sheet", "sheet.clear": "Clear",
+      "st.queued": "Waiting", "st.processing": "Processing", "st.done": "Done", "st.error": "Failed",
+      "frame.dl": "Download", "frame.redo": "Process again with current settings", "frame.rm": "Remove",
+      "note.fast": "Fast mode: instant, no AI. Good for simple graphics.",
+      "note.ready": "AI model ready ({dev}).",
+      "note.first": "First image: the 4.9 MB AI model downloads once.",
+      "note.big": " Images over {px}px are processed at {px}px first.",
+      "meta.ai": "AI", "meta.fast": "Fast",
+      "proc.prep": "Getting ready…",
+
+      "up.loadEngine": "Loading AI engine…", "up.engineProg": "Loading AI engine… {p}%",
+      "up.download": "Downloading AI model… {p}%", "up.prepModel": "Preparing AI model…",
+      "up.processing": "AI processing… {p}%", "up.eta": " · ~{s}s left", "up.toCpu": "Switching to CPU mode…",
+      "up.finishing": "Finishing…", "up.done": "Done!", "up.enlarge": "Enlarging ({i}/{n})…", "up.sharpen": "Sharpening details…",
+
+      "spec.model": "Model", "spec.size": "Model size", "spec.sizeV": "4.9 MB, downloaded once",
+      "spec.proc": "Processing", "spec.procV": "GPU (WebGPU) or CPU", "spec.yours": "Your images", "spec.yoursV": "Stay on your device",
+
+      "how.title": "How it works",
+      "how.1h": "Add your images", "how.1p": "Drag, choose or paste. One image or many at once.",
+      "how.2h": "Pick 2× or 4×", "how.2p": "AI engine for the best quality, or Fast when you need it right now.",
+      "how.3h": "Check and save", "how.3p": "Compare each image, then download one or all of them in a ZIP.",
+      "use.1h": "Online sellers", "use.1p": "Supplier product photos are often small. Enlarge them 4× so they look sharp on Shopee, Lazada and TikTok Shop.",
+      "use.2h": "Old & family photos", "use.2p": "Blurry scans of old photos get cleaner edges and less noise.",
+      "use.3h": "Logos & graphics", "use.3p": "A low-res logo becomes big enough for banners, shirts or print.",
+
+      "price.title": "Pricing", "price.soon": "Coming soon", "price.sub": "Right now every feature is free with no limit.",
+      "bill.monthly": "Monthly", "bill.yearly": "Yearly", "bill.save": "Pro: 2 months free",
+      "per.month": "/ month", "per.year": "/ year", "price.equiv": "≈ {p} a month, billed yearly", "price.monthlyOnly": "Monthly plan only",
+      "plan.best": "Best value",
+      "plan.free.name": "Free", "plan.free.f1": "{n} free images", "plan.free.f2": "2× and 4× upscaling", "plan.free.f3": "PNG or JPG download", "plan.free.cta": "Start now",
+      "plan.basic.name": "Basic", "plan.basic.f1": "{n} images a month", "plan.basic.f2": "Bulk upload up to {n} images", "plan.basic.f3": "AI Real-ESRGAN, 2× and 4×", "plan.basic.f4": "No watermark", "plan.basic.cta": "Choose Basic",
+      "plan.pro.name": "Pro", "plan.pro.f1": "Unlimited images", "plan.pro.f2": "Unlimited bulk upload", "plan.pro.f3": "AI Real-ESRGAN, 2× and 4×", "plan.pro.f4": "No watermark", "plan.pro.cta": "Choose Pro",
+      "pay.soon": "Payments aren't open yet. Everything is free for now.",
+
+      "faq.title": "FAQ",
+      "faq.1q": "Is it free?", "faq.1a": "Right now, yes, with no limit. Later every user gets 3 free images, then can choose Basic (500 images a month) or Pro (unlimited).",
+      "faq.2q": "How many images can I upscale at once?", "faq.2a": "During the free period, up to {n} images per batch. Basic lets you upload and process up to 500 images a month. Pro has no limit.",
+      "faq.3q": "Can I pay yearly?", "faq.3a": "Yes, for the Pro plan. Pro yearly costs the same as 10 months, so you get 2 months free. Basic is monthly only.",
+      "faq.4q": "What is Real-ESRGAN?", "faq.4a": "An open-source AI model for restoring and enlarging real photos that are blurry, noisy or compressed. It enlarges 4× while rebuilding detail.",
+      "faq.5q": "Why is the first image a bit slow?", "faq.5a": "The AI model (4.9 MB) downloads once and is kept in your browser. After that, speed depends on image size and your device.",
+      "faq.6q": "Are my images sent to a server?", "faq.6a": "No. All processing happens in your browser.",
+
+      "foot.made": "Made in Malaysia · Real-ESRGAN (BSD-3)",
+      "pw.close": "Close",
+      "pw.titleFree": "You've used all your free images", "pw.titleBasic": "You've used this month's {n} images", "pw.titleBasicLow": "Only {n} images left this month",
+      "pw.text": "Choose a plan to continue.", "pw.textDone": "{n} images are done. Choose a plan to process the rest.",
+      "pw.demo": "Payments are not active yet. This is a demo.",
+
+      "skip.format": "{name}: format not supported", "skip.size": "{name}: larger than {mb}MB",
+      "skip.batch": "{n} images go over your limit of {max}", "skip.batch1": "1 image goes over your limit of {max}", "skip.read": "{name}: couldn't be read",
+      "skip.many": "{n} files skipped. {first}",
+      "ai.fail": "The AI engine can't run on this device. Using Fast mode.",
+      "run.err": "{n} images failed. Try 2× or a smaller image, then press ↻.",
+      "run.doneMany": "{n} images done. Download them one by one or as a ZIP.",
+      "run.doneOne": "Done. Drag the line to compare.",
+      "save.fail": "This view can't save files.",
+    },
+
+    ms: {
+      "meta.desc": "Besarkan gambar 2× atau 4× dengan AI Real-ESRGAN. Satu atau banyak gambar sekaligus, terus dalam browser.",
+      "nav.how": "Cara guna", "nav.pricing": "Harga", "nav.faq": "Soalan",
+      "lang.label": "Bahasa",
+
+      "quota.unlimited": "Percuma tanpa had",
+      "quota.left": "Baki percuma {n}/{total}",
+      "quota.none": "Baki percuma habis",
+      "quota.basic": "Asas · baki {n}/{total} bulan ini",
+      "quota.pro": "Pro · tanpa had",
+
+      "hero.eyebrow": "Real-ESRGAN · 2× / 4× · satu atau pukal",
+      "hero.h1a": "Besarkan gambar.",
+      "hero.h1b": "Kekalkan setiap perincian.",
+      "hero.lead": "Masukkan satu gambar atau sepuluh sekaligus. AI membina semula tepi dan tekstur ketika membesarkan, kemudian anda muat turun satu persatu atau terus dalam satu fail ZIP.",
+      "drop.aria": "Pilih gambar untuk dimuat naik",
+      "drop.title": "Seret gambar ke sini",
+      "drop.subBatch": "JPG, PNG, WEBP · sehingga {n} gambar sekali · tampal dengan <kbd>Ctrl</kbd>+<kbd>V</kbd>",
+      "drop.subUnlimited": "JPG, PNG, WEBP · berapa banyak gambar pun · tampal dengan <kbd>Ctrl</kbd>+<kbd>V</kbd>",
+      "drop.pick": "Pilih gambar",
+      "samples.label": "Tiada gambar? Cuba contoh:",
+      "samples.all": "Muatkan ketiga-tiga",
+      "samples.aria": "Contoh: {name}",
+      "loupe.aria": "Demonstrasi kanta pembesar: kawasan dalam bulatan menunjukkan resolusi tinggi",
+      "loupe.in": "Dalam kanta: resolusi tinggi",
+      "loupe.out": "Luar: 120×90 px asal",
+      "loupe.note": "Ilustrasi · gerakkan tetikus",
+
+      "bench.engine": "Enjin", "bench.size": "Saiz", "bench.format": "Format",
+      "mode.fast": "Pantas",
+      "bench.add": "+ Tambah",
+      "run.all": "Upscale semua", "run.one": "Upscale 1 gambar", "run.n": "Upscale {n} gambar", "run.busy": "Sedang memproses…",
+      "zip.label": "Muat turun ZIP", "zip.n": "Muat turun ZIP ({n})", "zip.prep": "Menyediakan ZIP…", "dl.one": "Muat turun",
+      "zip.name": "nuvapix-{n}-gambar.zip",
+      "bs.done": "{d} / {n} siap", "bs.cur": "· sedang proses {name}", "bs.err": "· {n} gagal", "bs.wait": "· {n} menunggu", "bs.all": "· semua siap",
+      "tag.orig": "Asal",
+      "zoom": "Zum",
+      "sheet.title": "Helaian kontak", "sheet.clear": "Kosongkan",
+      "st.queued": "Menunggu", "st.processing": "Memproses", "st.done": "Siap", "st.error": "Gagal",
+      "frame.dl": "Muat turun", "frame.redo": "Proses semula dengan tetapan semasa", "frame.rm": "Buang",
+      "note.fast": "Mod Pantas: serta-merta, tanpa AI. Sesuai untuk grafik ringkas.",
+      "note.ready": "Model AI sedia ({dev}).",
+      "note.first": "Gambar pertama: model AI 4.9 MB dimuat turun sekali sahaja.",
+      "note.big": " Gambar melebihi {px}px diproses pada {px}px dahulu.",
+      "meta.ai": "AI", "meta.fast": "Pantas",
+      "proc.prep": "Bersedia…",
+
+      "up.loadEngine": "Memuatkan enjin AI…", "up.engineProg": "Memuatkan enjin AI… {p}%",
+      "up.download": "Memuat turun model AI… {p}%", "up.prepModel": "Menyediakan model AI…",
+      "up.processing": "AI sedang memproses… {p}%", "up.eta": " · ~{s}s lagi", "up.toCpu": "Menukar ke mod CPU…",
+      "up.finishing": "Menyiapkan hasil…", "up.done": "Siap!", "up.enlarge": "Membesarkan ({i}/{n})…", "up.sharpen": "Menajamkan perincian…",
+
+      "spec.model": "Model", "spec.size": "Saiz model", "spec.sizeV": "4.9 MB, dimuat sekali",
+      "spec.proc": "Pemprosesan", "spec.procV": "GPU (WebGPU) atau CPU", "spec.yours": "Gambar anda", "spec.yoursV": "Kekal dalam peranti",
+
+      "how.title": "Cara guna",
+      "how.1h": "Masukkan gambar", "how.1p": "Seret, pilih atau tampal. Boleh satu, boleh banyak sekaligus.",
+      "how.2h": "Pilih 2× atau 4×", "how.2p": "Enjin AI untuk kualiti terbaik, atau Pantas bila perlu segera.",
+      "how.3h": "Semak dan simpan", "how.3p": "Bandingkan setiap gambar, kemudian muat turun satu atau semua dalam ZIP.",
+      "use.1h": "Peniaga online", "use.1p": "Gambar produk dari pembekal selalunya kecil. Besarkan 4× supaya jelas di Shopee, Lazada dan TikTok Shop.",
+      "use.2h": "Foto lama & keluarga", "use.2p": "Imbasan gambar lama yang kabur dapat tepi yang lebih kemas dan hingar yang kurang.",
+      "use.3h": "Logo & grafik", "use.3p": "Logo resolusi rendah jadi cukup besar untuk banner, baju atau cetakan.",
+
+      "price.title": "Harga", "price.soon": "Akan datang", "price.sub": "Sekarang semua ciri percuma tanpa had.",
+      "bill.monthly": "Bulanan", "bill.yearly": "Tahunan", "bill.save": "Pro: percuma 2 bulan",
+      "per.month": "/ bulan", "per.year": "/ tahun", "price.equiv": "≈ {p} sebulan, dibayar setahun", "price.monthlyOnly": "Pakej bulanan sahaja",
+      "plan.best": "Paling berbaloi",
+      "plan.free.name": "Percuma", "plan.free.f1": "{n} gambar percuma", "plan.free.f2": "Upscale 2× dan 4×", "plan.free.f3": "Muat turun PNG atau JPG", "plan.free.cta": "Mula sekarang",
+      "plan.basic.name": "Asas", "plan.basic.f1": "{n} gambar sebulan", "plan.basic.f2": "Upload pukal sehingga {n} gambar", "plan.basic.f3": "AI Real-ESRGAN, 2× dan 4×", "plan.basic.f4": "Tiada tera air", "plan.basic.cta": "Pilih Asas",
+      "plan.pro.name": "Pro", "plan.pro.f1": "Gambar tanpa had", "plan.pro.f2": "Upload pukal tanpa had", "plan.pro.f3": "AI Real-ESRGAN, 2× dan 4×", "plan.pro.f4": "Tiada tera air", "plan.pro.cta": "Pilih Pro",
+      "pay.soon": "Pembayaran belum dibuka. Buat masa ini semuanya percuma.",
+
+      "faq.title": "Soalan lazim",
+      "faq.1q": "Adakah ia percuma?", "faq.1a": "Ya, buat masa ini tanpa had. Nanti setiap pengguna dapat 3 gambar percuma, kemudian boleh pilih Asas (500 gambar sebulan) atau Pro (tanpa had).",
+      "faq.2q": "Berapa banyak gambar boleh diproses sekaligus?", "faq.2a": "Semasa tempoh percuma, sehingga {n} gambar setiap kali. Pakej Asas membolehkan upload dan proses sehingga 500 gambar sebulan. Pro tiada had.",
+      "faq.3q": "Boleh bayar tahunan?", "faq.3a": "Boleh, untuk pakej Pro. Pro tahunan sama harga dengan 10 bulan, jadi anda dapat 2 bulan percuma. Pakej Asas bulanan sahaja.",
+      "faq.4q": "Apa itu Real-ESRGAN?", "faq.4a": "Model AI sumber terbuka untuk membaiki dan membesarkan gambar sebenar yang kabur, berhingar atau termampat. Ia membesarkan 4× sambil membina semula perincian.",
+      "faq.5q": "Kenapa gambar pertama lambat sedikit?", "faq.5a": "Model AI (4.9 MB) dimuat turun sekali dan disimpan dalam browser. Kelajuan seterusnya bergantung pada saiz gambar dan kuasa peranti anda.",
+      "faq.6q": "Adakah gambar saya dihantar ke server?", "faq.6a": "Tidak. Semua pemprosesan berlaku dalam browser anda.",
+
+      "foot.made": "Dibuat di Malaysia · Real-ESRGAN (BSD-3)",
+      "pw.close": "Tutup",
+      "pw.titleFree": "Gambar percuma anda sudah habis", "pw.titleBasic": "Kuota {n} gambar bulan ini sudah habis", "pw.titleBasicLow": "Hanya {n} gambar berbaki bulan ini",
+      "pw.text": "Pilih pakej untuk teruskan.", "pw.textDone": "{n} gambar sudah siap. Pilih pakej untuk proses baki gambar.",
+      "pw.demo": "Pembayaran belum diaktifkan. Ini paparan demo.",
+
+      "skip.format": "{name}: format tidak disokong", "skip.size": "{name}: lebih {mb}MB",
+      "skip.batch": "{n} gambar melebihi had {max} anda", "skip.batch1": "1 gambar melebihi had {max} anda", "skip.read": "{name}: tidak dapat dibaca",
+      "skip.many": "{n} fail dilangkau. {first}",
+      "ai.fail": "Enjin AI tidak dapat dijalankan di peranti ini. Menggunakan mod Pantas.",
+      "run.err": "{n} gambar gagal. Cuba 2× atau gambar lebih kecil, kemudian tekan ↻.",
+      "run.doneMany": "{n} gambar siap. Muat turun satu persatu atau sebagai ZIP.",
+      "run.doneOne": "Siap. Seret garisan untuk bandingkan.",
+      "save.fail": "Fail tidak dapat disimpan di paparan ini.",
+    },
+  };
+
+  const KEY = "nuvapix_lang";
+  const listeners = [];
+  const pick = (l) => (l === "ms" || l === "en" ? l : null);
+  let lang = pick(new URLSearchParams(location.search).get("lang"))
+    || (() => { try { return pick(localStorage.getItem(KEY)); } catch { return null; } })()
+    || pick(window.APP_CONFIG?.defaultLang) || "en";
+
+  function t(key, vars = {}) {
+    const s = dict[lang][key] ?? dict.en[key] ?? key;
+    return s.replace(/\{(\w+)\}/g, (m, n) => (vars[n] !== undefined ? vars[n] : m));
+  }
+  function apply() {
+    document.documentElement.lang = lang;
+    document.querySelectorAll("[data-i18n]").forEach((el) => (el.textContent = t(el.dataset.i18n)));
+    document.querySelectorAll("[data-i18n-aria]").forEach((el) => el.setAttribute("aria-label", t(el.dataset.i18nAria)));
+    document.querySelector('meta[name="description"]')?.setAttribute("content", t("meta.desc"));
+    document.querySelectorAll("[data-lang]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === lang)));
+    listeners.forEach((f) => f(lang));
+  }
+  function set(l) {
+    if (!pick(l)) return;
+    lang = l;
+    try { localStorage.setItem(KEY, l); } catch {}
+    apply();
+  }
+  return { t, apply, set, onChange: (f) => listeners.push(f), get lang() { return lang; } };
+})();
+
+</script>
+<script>
+// =====================================================
+//  ENJIN UPSCALE
+//  1) AI  — Real-ESRGAN (realesr-general-x4v3) melalui ONNX Runtime Web.
+//           Berjalan dalam browser pengguna (WebGPU jika ada, jika tidak WASM).
+//  2) Pantas — pembesaran berperingkat + unsharp mask (tanpa AI, serta-merta).
+// =====================================================
+(function () {
+  const MAX_PIXELS = 40_000_000;
+  const BAND = 96;
+  const tick = () => new Promise((r) => setTimeout(r, 0));
+  const L = (k, v) => (window.I18N ? window.I18N.t(k, v) : k);
+
+  function makeCanvas(w, h) {
+    const c = document.createElement("canvas");
+    c.width = w; c.height = h;
+    return c;
+  }
+  function toCanvas(img) {
+    const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+    const c = makeCanvas(w, h);
+    c.getContext("2d").drawImage(img, 0, 0);
+    return c;
+  }
+  // Kecilkan/besarkan dengan kualiti tinggi (separuh demi separuh bila mengecil)
+  function resize(src, w, h) {
+    let cur = src;
+    while (cur.width / 2 >= w && cur.height / 2 >= h) {
+      const n = makeCanvas(Math.round(cur.width / 2), Math.round(cur.height / 2));
+      const c = n.getContext("2d"); c.imageSmoothingQuality = "high"; c.drawImage(cur, 0, 0, n.width, n.height);
+      cur = n;
+    }
+    const out = makeCanvas(w, h);
+    const c = out.getContext("2d"); c.imageSmoothingQuality = "high"; c.drawImage(cur, 0, 0, w, h);
+    return out;
+  }
+
+  function targetSize(w, h, scale, maxSide) {
+    let s = scale;
+    if (w * s > maxSide || h * s > maxSide) s = Math.min(maxSide / w, maxSide / h);
+    if (w * s * h * s > MAX_PIXELS) s = Math.sqrt(MAX_PIXELS / (w * h));
+    s = Math.max(1, s);
+    return { w: Math.round(w * s), h: Math.round(h * s), scale: s };
+  }
+
+  // =================== ENJIN PANTAS ===================
+  async function sharpen(src, amount, threshold, onBand) {
+    const w = src.width, h = src.height;
+    const sctx = src.getContext("2d", { willReadFrequently: true });
+    const dst = makeCanvas(w, h);
+    const dctx = dst.getContext("2d");
+    for (let y0 = 0; y0 < h; y0 += BAND) {
+      const rows = Math.min(BAND, h - y0);
+      const top = Math.max(0, y0 - 1), bot = Math.min(h, y0 + rows + 1);
+      const inp = sctx.getImageData(0, top, w, bot - top).data;
+      const out = dctx.createImageData(w, rows);
+      const o = out.data, stride = w * 4;
+      for (let y = 0; y < rows; y++) {
+        const gy = y0 + y, ry = gy - top;
+        const up = (gy > 0 ? ry - 1 : ry) * stride, mid = ry * stride, dn = (gy < h - 1 ? ry + 1 : ry) * stride;
+        const orow = y * stride;
+        for (let x = 0; x < w; x++) {
+          const xl = (x > 0 ? x - 1 : x) * 4, xc = x * 4, xr = (x < w - 1 ? x + 1 : x) * 4;
+          for (let c = 0; c < 3; c++) {
+            const center = inp[mid + xc + c];
+            const blur = (inp[up + xl + c] + 2 * inp[up + xc + c] + inp[up + xr + c] +
+              2 * inp[mid + xl + c] + 4 * center + 2 * inp[mid + xr + c] +
+              inp[dn + xl + c] + 2 * inp[dn + xc + c] + inp[dn + xr + c]) / 16;
+            const diff = center - blur;
+            o[orow + xc + c] = Math.abs(diff) < threshold ? center - diff * 0.35 : center + diff * amount;
+          }
+          o[orow + xc + 3] = inp[mid + xc + 3];
+        }
+      }
+      dctx.putImageData(out, 0, y0);
+      onBand && onBand((y0 + rows) / h);
+      await tick();
+    }
+    return dst;
+  }
+
+  async function upscaleClassic(img, { scale, strength = 55, maxSide, onProgress = () => {} }) {
+    const src = toCanvas(img);
+    const t = targetSize(src.width, src.height, scale, maxSide);
+    const steps = [];
+    let cw = src.width, ch = src.height;
+    while (cw < t.w || ch < t.h) {
+      const nw = Math.min(t.w, cw * 2), nh = Math.min(t.h, ch * 2);
+      steps.push([nw, nh]); cw = nw; ch = nh;
+    }
+    if (!steps.length) steps.push([cw, ch]);
+    const perStep = (0.25 + (strength / 100) * 1.35) / steps.length;
+    const threshold = 3 + (strength / 100) * 2;
+    let cur = src;
+    for (let i = 0; i < steps.length; i++) {
+      const [nw, nh] = steps[i], base = i / steps.length, span = 1 / steps.length;
+      onProgress(base, L("up.enlarge", { i: i + 1, n: steps.length }));
+      await tick();
+      const next = makeCanvas(nw, nh);
+      const ctx = next.getContext("2d", { willReadFrequently: true });
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(cur, 0, 0, nw, nh);
+      cur = await sharpen(next, perStep, threshold, (p) => onProgress(base + span * (0.1 + 0.9 * p), L("up.sharpen")));
+    }
+    onProgress(1, L("up.done"));
+    return cur;
+  }
+
+  // =================== ENJIN AI (Real-ESRGAN) ===================
+  const AI = { session: null, loading: null, backend: null, scale: 4 };
+
+  function loadScript(src) {
+    return new Promise((res, rej) => {
+      if (window.ort) return res();
+      const s = document.createElement("script");
+      s.src = src; s.async = true; s.crossOrigin = "anonymous";
+      s.onload = res; s.onerror = () => rej(new Error("Gagal memuat ONNX Runtime"));
+      document.head.appendChild(s);
+    });
+  }
+
+  // Muat turun model dengan peratus kemajuan + simpan dalam cache browser
+  async function fetchModel(url, onProgress, sizeHint = 4_900_000) {
+    let cache = null;
+    try { cache = await caches.open("upscale-ai-models-v1"); const hit = await cache.match(url); if (hit) { onProgress(1); return new Uint8Array(await hit.arrayBuffer()); } } catch { cache = null; }
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Gagal muat turun model AI");
+    const total = Number(res.headers.get("content-length")) || sizeHint;
+    const reader = res.body.getReader();
+    const chunks = []; let got = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value); got += value.length;
+      onProgress(Math.min(1, got / total));
+    }
+    let buf = new Uint8Array(got); let off = 0;
+    for (const c of chunks) { buf.set(c, off); off += c.length; }
+    // Fail ".b64.txt" = model yang disimpan sebagai teks base64 (untuk hos yang hanya terima fail teks)
+    if (/\.b64\.txt(\?|$)/.test(url)) {
+      const bin = atob(new TextDecoder().decode(buf).replace(/\s+/g, ""));
+      buf = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+    }
+    try { cache && (await cache.put(url, new Response(buf.slice(), { headers: { "content-type": "application/octet-stream" } }))); } catch {}
+    return buf;
+  }
+
+  // Cuba GPU (WebGPU) dahulu, jika gagal guna CPU (WASM).
+  // Nota: WebGPU perlu susun atur NCHW untuk model ini (layout NHWC gagal pada nod Clip).
+  async function createSession(order) {
+    const ort = window.ort;
+    let lastErr;
+    for (const name of order) {
+      try {
+        const ep = name === "webgpu" ? { name: "webgpu", preferredLayout: "NCHW" } : "wasm";
+        AI.session = await ort.InferenceSession.create(AI.model, { executionProviders: [ep], graphOptimizationLevel: "all" });
+        AI.backend = name;
+        return;
+      } catch (e) { lastErr = e; }
+    }
+    throw lastErr || new Error("Model AI gagal dimulakan");
+  }
+
+  async function loadAI(cfg, onProgress = () => {}) {
+    if (AI.session) return AI.session;
+    if (AI.loading) return AI.loading;
+    AI.loading = (async () => {
+      onProgress(0, L("up.loadEngine"));
+      await loadScript(cfg.ortUrl);
+      const ort = window.ort;
+      ort.env.wasm.wasmPaths = cfg.ortWasmPath;
+      ort.env.wasm.numThreads = self.crossOriginIsolated ? Math.min(4, navigator.hardwareConcurrency || 2) : 1;
+      // Pilihan: muat fail .wasm sendiri (untuk persekitaran yang sekat fetch ke CDN)
+      if (cfg.wasmBinaryUrl) {
+        const wasm = await fetchModel(cfg.wasmBinaryUrl, (p) => onProgress(p * 0.5, L("up.engineProg", { p: Math.round(p * 100) })), 11_300_000);
+        ort.env.wasm.wasmBinary = wasm.buffer;
+      }
+      const model = await fetchModel(cfg.modelUrl, (p) => onProgress(p, L("up.download", { p: Math.round(p * 100) })));
+      onProgress(1, L("up.prepModel"));
+      AI.model = model;
+      await createSession(navigator.gpu ? ["webgpu", "wasm"] : ["wasm"]);
+      return AI.session;
+    })();
+    try { return await AI.loading; } finally { AI.loading = null; }
+  }
+
+  async function runAI(srcCanvas, cfg, onProgress) {
+    const ort = window.ort;
+    const W = srcCanvas.width, H = srcCanvas.height, S = AI.scale;
+    const src = srcCanvas.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, W, H).data;
+    const OW = W * S, OH = H * S;
+    const out = new Uint8ClampedArray(OW * OH * 4);
+    const T = AI.backend === "webgpu" ? cfg.tileSizeGPU : cfg.tileSizeCPU;
+    const PAD = 8;
+    const tiles = [];
+    for (let y = 0; y < H; y += T) for (let x = 0; x < W; x += T) tiles.push([x, y, Math.min(T, W - x), Math.min(T, H - y)]);
+    const t0 = performance.now();
+
+    for (let i = 0; i < tiles.length; i++) {
+      const [x, y, tw, th] = tiles[i];
+      const px = Math.max(0, x - PAD), py = Math.max(0, y - PAD);
+      const iw = Math.min(W, x + tw + PAD) - px, ih = Math.min(H, y + th + PAD) - py;
+      const plane = iw * ih, data = new Float32Array(3 * plane);
+      for (let yy = 0; yy < ih; yy++) {
+        for (let xx = 0; xx < iw; xx++) {
+          const si = ((py + yy) * W + px + xx) * 4, di = yy * iw + xx;
+          data[di] = src[si] / 255; data[plane + di] = src[si + 1] / 255; data[2 * plane + di] = src[si + 2] / 255;
+        }
+      }
+      const feed = () => ({ [AI.session.inputNames[0]]: new ort.Tensor("float32", data, [1, 3, ih, iw]) });
+      let result;
+      try { result = await AI.session.run(feed()); }
+      catch (e) {
+        if (AI.backend !== "webgpu") throw e;
+        console.warn("WebGPU gagal, tukar ke CPU:", e);
+        onProgress(i / tiles.length, L("up.toCpu"));
+        await createSession(["wasm"]);
+        return runAI(srcCanvas, cfg, onProgress);
+      }
+      const o = result[AI.session.outputNames[0]], od = o.data, ow = o.dims[3], oplane = o.dims[2] * ow;
+      // Salin hanya bahagian tengah (tanpa padding) ke imej output
+      const ox0 = (x - px) * S, oy0 = (y - py) * S;
+      for (let yy = 0; yy < th * S; yy++) {
+        const dy = y * S + yy, srow = (oy0 + yy) * ow;
+        for (let xx = 0; xx < tw * S; xx++) {
+          const si = srow + ox0 + xx, di = (dy * OW + x * S + xx) * 4;
+          out[di] = od[si] * 255; out[di + 1] = od[oplane + si] * 255; out[di + 2] = od[2 * oplane + si] * 255; out[di + 3] = 255;
+        }
+      }
+      o.dispose?.();
+      const done = (i + 1) / tiles.length;
+      const eta = ((performance.now() - t0) / (i + 1)) * (tiles.length - i - 1) / 1000;
+      onProgress(done, L("up.processing", { p: Math.round(done * 100) }) + (i > 0 && eta > 3 ? L("up.eta", { s: Math.ceil(eta) }) : ""));
+      await tick();
+    }
+
+    const canvas = makeCanvas(OW, OH);
+    const ctx = canvas.getContext("2d");
+    const img = new ImageData(out, OW, OH);
+    // Kekalkan lutsinar (alpha) jika gambar asal ada
+    let hasAlpha = false;
+    for (let i = 3; i < src.length; i += 4) if (src[i] < 255) { hasAlpha = true; break; }
+    if (hasAlpha) {
+      const a = resize(srcCanvas, OW, OH).getContext("2d").getImageData(0, 0, OW, OH).data;
+      for (let i = 3; i < out.length; i += 4) out[i] = a[i];
+    }
+    ctx.putImageData(img, 0, 0);
+    return canvas;
+  }
+
+  async function upscaleAI(img, { scale, maxSide, ai, onProgress = () => {} }) {
+    let src = toCanvas(img);
+    // Gambar terlalu besar → kecilkan dahulu supaya tidak terlalu lambat
+    const longSide = Math.max(src.width, src.height);
+    if (longSide > ai.maxInputSide) {
+      const k = ai.maxInputSide / longSide;
+      src = resize(src, Math.round(src.width * k), Math.round(src.height * k));
+    }
+    const t = targetSize(img.naturalWidth || img.width, img.naturalHeight || img.height, scale, maxSide);
+
+    await loadAI(ai, (p, label) => onProgress(p * 0.15, label));
+    onProgress(0.15, L("up.processing", { p: 0 }));
+    const up = await runAI(src, ai, (p, label) => onProgress(0.15 + p * 0.8, label));
+    onProgress(0.97, L("up.finishing"));
+    await tick();
+    const final = up.width === t.w && up.height === t.h ? up : resize(up, t.w, t.h);
+    onProgress(1, L("up.done"));
+    return final;
+  }
+
+  window.Upscaler = {
+    targetSize,
+    upscaleClassic,
+    upscaleAI,
+    aiInfo: () => ({ ready: !!AI.session, backend: AI.backend }),
+  };
+})();
+
+</script>
+<script>
+// Penulis ZIP ringkas (tanpa mampatan — PNG/JPG memang sudah dimampat).
+// makeZip([{name, data: Uint8Array}]) → Blob
+(function () {
+  const table = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    table[n] = c >>> 0;
+  }
+  function crc32(bytes) {
+    let c = 0xffffffff;
+    for (let i = 0; i < bytes.length; i++) c = table[(c ^ bytes[i]) & 0xff] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  }
+  function dosTime(d) {
+    return {
+      time: (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1),
+      date: ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate(),
+    };
+  }
+
+  function makeZip(files) {
+    const enc = new TextEncoder();
+    const parts = [], central = [];
+    let offset = 0;
+    const { time, date } = dosTime(new Date());
+    for (const f of files) {
+      const name = enc.encode(f.name);
+      const crc = crc32(f.data), size = f.data.length;
+      const lh = new DataView(new ArrayBuffer(30));
+      lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true);
+      lh.setUint16(8, 0, true); lh.setUint16(10, time, true); lh.setUint16(12, date, true);
+      lh.setUint32(14, crc, true); lh.setUint32(18, size, true); lh.setUint32(22, size, true);
+      lh.setUint16(26, name.length, true); lh.setUint16(28, 0, true);
+      parts.push(lh, name, f.data);
+
+      const ch = new DataView(new ArrayBuffer(46));
+      ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true);
+      ch.setUint16(8, 0x0800, true); ch.setUint16(10, 0, true); ch.setUint16(12, time, true); ch.setUint16(14, date, true);
+      ch.setUint32(16, crc, true); ch.setUint32(20, size, true); ch.setUint32(24, size, true);
+      ch.setUint16(28, name.length, true); ch.setUint32(42, offset, true);
+      central.push(ch, name);
+      offset += 30 + name.length + size;
+    }
+    const cdSize = central.reduce((s, p) => s + p.byteLength, 0);
+    const end = new DataView(new ArrayBuffer(22));
+    end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
+    end.setUint32(12, cdSize, true); end.setUint32(16, offset, true);
+    return new Blob([...parts, ...central, end], { type: "application/zip" });
+  }
+
+  window.makeZip = makeZip;
+})();
+
+</script>
+<script>
+(function () {
+  const CFG = window.APP_CONFIG;
+  const $ = (id) => document.getElementById(id);
+  const t = (k, v) => I18N.t(k, v);
+  const params = new URLSearchParams(location.search);
+
+  // =================== PAKEJ & KUOTA ===================
+  // Fasa sekarang: CFG.freeLimit = null → semua percuma tanpa had.
+  // Demo tanpa ubah kod:  ?limit=3 (mod 3 percuma) · ?plan=basic · ?plan=pro · ?reset=1
+  // PENTING: Bila mula caj, pakej & kiraan MESTI disimpan di server (akaun pengguna).
+  const PLAN = ["basic", "pro"].includes(params.get("plan")) ? params.get("plan") : "free";
+  const LIMIT = params.has("limit") ? Number(params.get("limit")) : CFG.freeLimit;
+  const hasFreeLimit = () => LIMIT !== null && LIMIT !== undefined && !Number.isNaN(LIMIT);
+  const usageKey = () => {
+    if (PLAN !== "basic") return "upscale_used_count";
+    const d = new Date();
+    return `nuvapix_used_${d.getFullYear()}_${d.getMonth() + 1}`; // kuota Asas diset semula setiap bulan
+  };
+  const store = {
+    get() { try { return Number(localStorage.getItem(usageKey())) || 0; } catch { return 0; } },
+    set(v) { try { localStorage.setItem(usageKey(), String(v)); } catch {} },
+  };
+  if (params.has("reset")) store.set(0);
+  const quota = () => (PLAN === "pro" ? null : PLAN === "basic" ? CFG.plans.basic.quota : hasFreeLimit() ? LIMIT : null);
+  const remaining = () => { const q = quota(); return q === null ? Infinity : Math.max(0, q - store.get()); };
+  // Had gambar dalam satu kumpulan upload
+  const batchCap = () => (PLAN === "pro" ? Infinity : PLAN === "basic" ? CFG.plans.basic.quota : CFG.maxBatch);
+
+  function renderUsage() {
+    const pill = $("usagePill"), q = quota(), r = remaining();
+    pill.classList.remove("warn");
+    if (PLAN === "pro") pill.textContent = t("quota.pro");
+    else if (PLAN === "basic") { pill.textContent = t("quota.basic", { n: r, total: q }); pill.classList.toggle("warn", r <= 20); }
+    else if (q === null) pill.textContent = t("quota.unlimited");
+    else { pill.textContent = r > 0 ? t("quota.left", { n: r, total: q }) : t("quota.none"); pill.classList.toggle("warn", r <= 1); }
+  }
+
+  // =================== TEKS STATIK & HARGA ===================
+  document.querySelectorAll("[data-brand]").forEach((el) => (el.textContent = CFG.brandName));
+  $("year").textContent = new Date().getFullYear();
+
+  function renderStaticVars() {
+    const cap = batchCap();
+    $("dropSub").innerHTML = cap === Infinity ? t("drop.subUnlimited") : t("drop.subBatch", { n: cap });
+    $("faq2a").textContent = t("faq.2a", { n: CFG.maxBatch });
+  }
+
+  let billing = "monthly";
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  function planHTML(id) {
+    const p = CFG.plans[id];
+    let price = "RM0", per = "", equiv = "", feats;
+    if (id === "free") feats = [t("plan.free.f1", { n: p.quota }), t("plan.free.f2"), t("plan.free.f3")];
+    else {
+      const yearly = billing === "yearly" && p.yearly; // pakej tanpa harga tahunan kekal bulanan
+      price = yearly ? p.yearly : p.monthly;
+      per = t(yearly ? "per.year" : "per.month");
+      equiv = yearly ? t("price.equiv", { p: p.yearlyPerMonth }) : billing === "yearly" ? t("price.monthlyOnly") : "";
+      feats = [1, 2, 3, 4].map((i) => t(`plan.${id}.f${i}`, { n: p.quota }));
+    }
+    return `<div class="plan ${p.highlight ? "hl" : ""}" data-badge="${esc(t("plan.best"))}">
+      <h3>${esc(t(`plan.${id}.name`))}</h3>
+      <div class="price">${esc(price)} <small>${esc(per)}</small></div>
+      <p class="equiv">${esc(equiv)}</p>
+      <ul>${feats.map((f) => `<li>${esc(f)}</li>`).join("")}</ul>
+      <button class="btn ${p.highlight ? "btn-ink" : "btn-line"}" data-plan="${id}" type="button">${esc(t(`plan.${id}.cta`))}</button>
+    </div>`;
+  }
+  function renderPlans() {
+    $("plans").innerHTML = ["free", "basic", "pro"].map(planHTML).join("");
+    $("plansModal").innerHTML = (PLAN === "basic" ? ["pro"] : ["basic", "pro"]).map(planHTML).join("");
+    document.querySelectorAll("[data-bill]").forEach((b) => b.classList.toggle("on", b.dataset.bill === billing));
+  }
+  document.querySelectorAll(".billing").forEach((g) => g.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-bill]"); if (!b) return;
+    billing = b.dataset.bill; renderPlans();
+  }));
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-plan]");
+    if (!b) return;
+    if (b.dataset.plan === "free") { paywall.hidden = true; window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+    toast(t("pay.soon"));
+  });
+  document.querySelectorAll("[data-lang]").forEach((b) => b.addEventListener("click", () => I18N.set(b.dataset.lang)));
+
+  // =================== TOAST, MODAL, SIMPAN FAIL ===================
+  let toastT;
+  function toast(msg, ms = 3400) {
+    const el = $("toast"); el.textContent = msg; el.hidden = false;
+    clearTimeout(toastT); toastT = setTimeout(() => (el.hidden = true), ms);
+  }
+  const paywall = $("paywall");
+  let paywallDone = 0;
+  function openPaywall(done) {
+    paywallDone = done;
+    renderPaywallText();
+    paywall.hidden = false;
+  }
+  function renderPaywallText() {
+    const r = remaining();
+    $("pwTitle").textContent = PLAN !== "basic" ? t("pw.titleFree")
+      : r > 0 ? t("pw.titleBasicLow", { n: r }) : t("pw.titleBasic", { n: CFG.plans.basic.quota });
+    $("pwText").textContent = paywallDone ? t("pw.textDone", { n: paywallDone }) : t("pw.text");
+  }
+  paywall.addEventListener("click", (e) => { if (e.target.closest("[data-close]")) paywall.hidden = true; });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") paywall.hidden = true; });
+
+  // Dalam Claude Artifact, muat turun mesti melalui keupayaan "downloads".
+  let dlCap = null;
+  try { window.claude?.use?.("downloads")?.then((d) => (dlCap = d)).catch(() => {}); } catch {}
+  async function saveFile(filename, blob) {
+    if (dlCap) {
+      try { await dlCap.save({ filename, data: blob }); return true; }
+      catch (e) { if (e?.code !== "declined") toast(t("save.fail")); return false; }
+    }
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    return true;
+  }
+
+  // =================== LUKISAN CONTOH ===================
+  function drawLandscape(c, w, h) {
+    const sky = c.createLinearGradient(0, 0, 0, h * .62);
+    sky.addColorStop(0, "#132a4f"); sky.addColorStop(.5, "#3f6f9e"); sky.addColorStop(.85, "#f2a65a"); sky.addColorStop(1, "#ffd8a0");
+    c.fillStyle = sky; c.fillRect(0, 0, w, h);
+    const sun = c.createRadialGradient(w * .66, h * .56, 0, w * .66, h * .56, h * .3);
+    sun.addColorStop(0, "#fff6d8"); sun.addColorStop(.3, "#ffd27a"); sun.addColorStop(.31, "rgba(255,200,120,.5)"); sun.addColorStop(1, "rgba(255,160,90,0)");
+    c.fillStyle = sun; c.fillRect(0, 0, w, h * .62);
+    const ridge = (col, base, amp, seed) => {
+      c.fillStyle = col; c.beginPath(); c.moveTo(0, h * .62);
+      for (let x = 0; x <= w; x += w / 70) { const t = x / w; c.lineTo(x, h * base - Math.abs(Math.sin(t * 5 + seed)) * h * amp - Math.sin(t * 19 + seed) * h * amp * .22); }
+      c.lineTo(w, h * .62); c.fill();
+    };
+    ridge("#4a6b8c", .5, .15, 1); ridge("#2c4a68", .56, .12, 3); ridge("#16283d", .6, .07, 5);
+    const sea = c.createLinearGradient(0, h * .62, 0, h);
+    sea.addColorStop(0, "#f2b27a"); sea.addColorStop(.3, "#3c6a90"); sea.addColorStop(1, "#0d1c2e");
+    c.fillStyle = sea; c.fillRect(0, h * .62, w, h * .38);
+    c.fillStyle = "rgba(255,236,190,.8)";
+    for (let i = 0; i < 14; i++) { const y = h * (.64 + i * .022), ww = w * (.15 - i * .009); c.fillRect(w * .66 - ww / 2, y, ww, Math.max(1, h * .006)); }
+    const palm = (x, s) => {
+      c.strokeStyle = "#08111c"; c.lineCap = "round"; c.lineWidth = s * .05;
+      c.beginPath(); c.moveTo(x, h); c.quadraticCurveTo(x + s * .15, h - s * .6, x + s * .05, h - s * 1.15); c.stroke();
+      const tx = x + s * .05, ty = h - s * 1.15; c.lineWidth = s * .035;
+      for (let a = 0; a < 7; a++) { const g = -Math.PI + a * (Math.PI / 6); c.beginPath(); c.moveTo(tx, ty); c.quadraticCurveTo(tx + Math.cos(g) * s * .35, ty + Math.sin(g) * s * .35 - s * .1, tx + Math.cos(g) * s * .55, ty + Math.sin(g) * s * .2 + s * .12); c.stroke(); }
+    };
+    palm(w * .08, h * .6); palm(w * .17, h * .44); palm(w * .92, h * .54);
+    c.fillStyle = "#fff"; c.textBaseline = "top";
+    c.font = `800 ${h * .11}px "Bricolage Grotesque", sans-serif`; c.fillText("Pantai Cenang", w * .05, h * .07);
+    c.font = `500 ${h * .045}px "JetBrains Mono", monospace`; c.fillStyle = "rgba(255,255,255,.85)";
+    c.fillText("LANGKAWI · 6°17'N 99°43'E", w * .05, h * .2);
+  }
+  function drawProduct(c, w, h) {
+    const bg = c.createLinearGradient(0, 0, w, h); bg.addColorStop(0, "#eef2f5"); bg.addColorStop(1, "#d6dee6");
+    c.fillStyle = bg; c.fillRect(0, 0, w, h);
+    c.fillStyle = "#c5ced8"; c.fillRect(0, h * .74, w, h);
+    c.fillStyle = "rgba(0,0,0,.15)"; c.beginPath(); c.ellipse(w * .5, h * .78, w * .17, h * .03, 0, 0, 7); c.fill();
+    c.fillStyle = "#7a3b1e"; c.beginPath(); c.roundRect(w * .36, h * .24, w * .28, h * .54, w * .03); c.fill();
+    c.fillStyle = "#4e2512"; c.fillRect(w * .44, h * .13, w * .12, h * .12);
+    c.fillStyle = "#fff8ee"; c.fillRect(w * .38, h * .4, w * .24, h * .21);
+    c.fillStyle = "#7a3b1e"; c.textAlign = "center"; c.font = `800 ${h * .075}px "Bricolage Grotesque", sans-serif`; c.fillText("SAMBAL", w * .5, h * .51);
+    c.font = `600 ${h * .035}px "JetBrains Mono", monospace`; c.fillText("PEDAS · 250g", w * .5, h * .575);
+    c.fillStyle = "#d6006f"; c.font = `800 ${h * .085}px "Bricolage Grotesque", sans-serif`; c.fillText("BELI 2 PERCUMA 1", w * .5, h * .93);
+    c.textAlign = "left";
+  }
+  function drawLogo(c, w, h) {
+    c.fillStyle = "#ffffff"; c.fillRect(0, 0, w, h);
+    const s = h * .5, x0 = w * .1, y0 = h * .25, g = s * .06, q = (s - g) / 2;
+    [["#0094d4", 0, 0], ["#d6006f", 1, 0], ["#f2c200", 0, 1], ["#111a2b", 1, 1]].forEach(([col, i, j]) => { c.fillStyle = col; c.fillRect(x0 + i * (q + g), y0 + j * (q + g), q, q); });
+    c.fillStyle = "#111a2b"; c.textBaseline = "middle"; c.font = `800 ${h * .2}px "Bricolage Grotesque", sans-serif`; c.fillText("Kedai", w * .48, h * .42);
+    c.font = `500 ${h * .11}px "JetBrains Mono", monospace`; c.fillStyle = "#5a6779"; c.fillText("SAHA & CO.", w * .48, h * .62);
+  }
+  function makeCanvas(fn, w, h) { const cv = document.createElement("canvas"); cv.width = w; cv.height = h; fn(cv.getContext("2d"), w, h); return cv; }
+  const SAMPLES = [
+    { fn: drawLandscape, w: 240, h: 160, name: "pantai-cenang.png" },
+    { fn: drawProduct, w: 180, h: 180, name: "sambal-pedas.png" },
+    { fn: drawLogo, w: 220, h: 120, name: "logo-kedai.png" },
+  ];
+  const sampleFile = (s) => new Promise((r) => makeCanvas(s.fn, s.w, s.h).toBlob((b) => r(new File([b], s.name, { type: "image/png" }))));
+
+  // =================== KANTA PEMBESAR (HERO) ===================
+  const lc = $("loupe"), lctx = lc.getContext("2d");
+  let lo, hi, pointer = null, lastMove = 0;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function setupLoupe() {
+    const r = lc.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1);
+    lc.width = Math.max(2, Math.round(r.width * dpr)); lc.height = Math.max(2, Math.round(r.height * dpr));
+    lo = makeCanvas(drawLandscape, 120, 90);
+    hi = makeCanvas(drawLandscape, lc.width, lc.height);
+  }
+  function drawLoupe(x, y) {
+    const w = lc.width, h = lc.height, R = Math.min(w, h) * .23, css = getComputedStyle(document.documentElement);
+    lctx.imageSmoothingEnabled = false; lctx.drawImage(lo, 0, 0, w, h);
+    lctx.save(); lctx.beginPath(); lctx.arc(x, y, R, 0, Math.PI * 2); lctx.clip(); lctx.drawImage(hi, 0, 0); lctx.restore();
+    lctx.lineWidth = Math.max(3, R * .04); lctx.strokeStyle = css.getPropertyValue("--cyan").trim() || "#0094d4";
+    lctx.beginPath(); lctx.arc(x, y, R, 0, Math.PI * 2); lctx.stroke();
+    // pemegang kanta
+    const a = Math.PI * .25;
+    lctx.lineWidth = R * .14; lctx.lineCap = "round"; lctx.strokeStyle = "#111a2b";
+    lctx.beginPath(); lctx.moveTo(x + Math.cos(a) * R * 1.04, y + Math.sin(a) * R * 1.04); lctx.lineTo(x + Math.cos(a) * R * 1.55, y + Math.sin(a) * R * 1.55); lctx.stroke();
+    // label
+    const fs = Math.max(11, R * .16);
+    lctx.font = `600 ${fs}px "JetBrains Mono", monospace`; lctx.textBaseline = "middle";
+    const label = "4× AI", tw = lctx.measureText(label).width + fs;
+    lctx.fillStyle = lctx.strokeStyle = css.getPropertyValue("--cyan").trim() || "#0094d4";
+    const ly = y - R - fs * 1.9 < 0 ? y + R + fs * 0.4 : y - R - fs * 1.9; // ke bawah kanta jika terlalu atas
+    lctx.fillRect(x - tw / 2, ly, tw, fs * 1.5);
+    lctx.fillStyle = "#fff"; lctx.fillText(label, x - tw / 2 + fs / 2, ly + fs * 0.75);
+  }
+  function loupeFrame(t) {
+    if (!lo) return;
+    let x, y;
+    if (pointer && (reduce || t - lastMove < 2500)) ({ x, y } = pointer);
+    else if (reduce) { x = lc.width * .6; y = lc.height * .45; }
+    else { x = lc.width * (.5 + .3 * Math.sin(t / 2100)); y = lc.height * (.48 + .2 * Math.sin(t / 1300)); }
+    drawLoupe(x, y);
+    if (!reduce) requestAnimationFrame(loupeFrame);
+  }
+  lc.addEventListener("pointermove", (e) => {
+    const r = lc.getBoundingClientRect();
+    pointer = { x: (e.clientX - r.left) * (lc.width / r.width), y: (e.clientY - r.top) * (lc.height / r.height) };
+    lastMove = performance.now();
+    if (reduce) drawLoupe(pointer.x, pointer.y);
+  });
+  lc.addEventListener("pointerleave", () => (lastMove = 0));
+  (document.fonts?.ready || Promise.resolve()).then(() => { setupLoupe(); requestAnimationFrame(loupeFrame); });
+  let rzT; addEventListener("resize", () => { clearTimeout(rzT); rzT = setTimeout(() => { setupLoupe(); if (reduce) loupeFrame(0); }, 200); });
+
+
+  // =================== BUTANG CONTOH ===================
+  const sampleBtns = SAMPLES.map((s) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.title = s.name;
+    b.appendChild(makeCanvas(s.fn, 92, 92));
+    b.addEventListener("click", async (e) => { e.stopPropagation(); addFiles([await sampleFile(s)]); });
+    $("sampleRow").appendChild(b);
+    return [b, s];
+  });
+  const renderSampleLabels = () => sampleBtns.forEach(([b, s]) => b.setAttribute("aria-label", t("samples.aria", { name: s.name })));
+  $("sampleAllBtn").addEventListener("click", async () => addFiles(await Promise.all(SAMPLES.map(sampleFile))));
+
+  // =================== MASUKKAN GAMBAR ===================
+  const drop = $("dropZone"), input = $("fileInput");
+  $("pickBtn").addEventListener("click", (e) => { e.stopPropagation(); input.click(); });
+  $("addBtn").addEventListener("click", () => input.click());
+  drop.addEventListener("click", () => input.click());
+  drop.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); input.click(); } });
+  input.addEventListener("change", () => { addFiles([...input.files]); input.value = ""; });
+  let depth = 0;
+  document.addEventListener("dragenter", (e) => { e.preventDefault(); depth++; drop.classList.add("over"); });
+  document.addEventListener("dragover", (e) => e.preventDefault());
+  document.addEventListener("dragleave", () => { if (--depth <= 0) { depth = 0; drop.classList.remove("over"); } });
+  document.addEventListener("drop", (e) => { e.preventDefault(); depth = 0; drop.classList.remove("over"); addFiles([...(e.dataTransfer?.files || [])]); });
+  document.addEventListener("paste", (e) => {
+    const files = [...(e.clipboardData?.items || [])].filter((i) => i.type.startsWith("image/")).map((i) => i.getAsFile()).filter(Boolean);
+    if (files.length) addFiles(files);
+  });
+
+
+  // =================== KEADAAN ===================
+  const S = { items: [], sel: null, mode: "ai", scale: 4, fmt: "png", busy: false, seq: 0 };
+  const loadImg = (url) => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+
+  async function addFiles(files) {
+    if (!files.length) return;
+    const ok = [], skipped = [];
+    for (const f of files) {
+      if (!/^image\/(png|jpe?g|webp)$/.test(f.type)) skipped.push(t("skip.format", { name: f.name }));
+      else if (f.size > CFG.maxFileMB * 1048576) skipped.push(t("skip.size", { name: f.name, mb: CFG.maxFileMB }));
+      else ok.push(f);
+    }
+    // Had ikut pakej: Percuma = maxBatch sekali, Asas = baki kuota bulan ini, Pro = tanpa had
+    const pendingNew = S.items.filter((i) => !i.counted).length;
+    const cap = PLAN === "free" ? CFG.maxBatch - S.items.length : PLAN === "basic" ? remaining() - pendingNew : Infinity;
+    const max = PLAN === "basic" ? remaining() : CFG.maxBatch;
+    let overQuota = false;
+    if (ok.length > cap) {
+      const over = ok.length - Math.max(0, cap);
+      skipped.push(t(over === 1 ? "skip.batch1" : "skip.batch", { n: over, max }));
+      ok.length = Math.max(0, cap);
+      overQuota = PLAN === "basic";
+    }
+    for (const f of ok) {
+      const url = URL.createObjectURL(f);
+      try {
+        const img = await loadImg(url);
+        S.items.push({ id: ++S.seq, name: f.name.replace(/\.[^.]+$/, "") || "image", url, img, w: img.naturalWidth, h: img.naturalHeight, status: "queued", progress: 0, counted: false, out: null });
+      } catch { URL.revokeObjectURL(url); skipped.push(t("skip.read", { name: f.name })); }
+    }
+    if (skipped.length) toast(skipped.length === 1 ? skipped[0] : t("skip.many", { n: skipped.length, first: skipped[0] }), 5000);
+    if (overQuota) openPaywall(0);
+    if (!S.items.length) return;
+    if (!S.sel || !S.items.find((i) => i.id === S.sel)) S.sel = S.items[0].id;
+    const firstOpen = $("bench").hidden;
+    $("bench").hidden = false;
+    renderAll();
+    if (firstOpen) requestAnimationFrame(() => $("bench").scrollIntoView({ behavior: "smooth", block: "start" }));
+  }
+
+  // =================== PAPARAN ===================
+  const st = (s) => t(`st.${s}`);
+  const outSize = (it) => Upscaler.targetSize(it.w, it.h, it.out ? it.out.scale : S.scale, CFG.maxOutputSide);
+
+  function renderFrames() {
+    const ol = $("frames");
+    ol.innerHTML = "";
+    S.items.forEach((it, idx) => {
+      const li = document.createElement("li");
+      li.className = "frame" + (it.id === S.sel ? " sel" : "");
+      li.dataset.id = it.id;
+      const o = outSize(it);
+      const label = it.status === "processing" ? `${st("processing")} ${Math.round(it.progress * 100)}%` : st(it.status);
+      li.innerHTML = `
+        <span class="f-no">${String(idx + 1).padStart(2, "0")}A</span>
+        <img class="f-thumb" alt="" />
+        <div class="f-info">
+          <div class="f-name"></div>
+          <div class="f-meta">${it.w}×${it.h} → ${o.w}×${o.h}</div>
+          <span class="f-status st-${it.status}"></span>
+        </div>
+        <div class="f-acts">
+          <button type="button" data-act="dl" ${it.status === "done" ? "" : "disabled"}>↓</button>
+          <button type="button" data-act="redo" ${it.status === "processing" ? "disabled" : ""}>↻</button>
+          <button type="button" data-act="rm" ${it.status === "processing" ? "disabled" : ""}>×</button>
+        </div>`;
+      li.querySelector(".f-thumb").src = it.url;
+      li.querySelector(".f-name").textContent = it.name;
+      li.querySelector(".f-status").textContent = label;
+      [["dl", "frame.dl"], ["redo", "frame.redo"], ["rm", "frame.rm"]].forEach(([a, k]) => {
+        const b = li.querySelector(`[data-act="${a}"]`); b.title = t(k); b.setAttribute("aria-label", t(k));
+      });
+      ol.appendChild(li);
+    });
+  }
+
+  function renderStatus() {
+    const n = S.items.length, done = S.items.filter((i) => i.status === "done").length;
+    const err = S.items.filter((i) => i.status === "error").length;
+    const pending = S.items.filter((i) => i.status === "queued" || i.status === "error").length;
+    const cur = S.items.find((i) => i.status === "processing");
+    $("bsMain").textContent = t("bs.done", { d: done, n });
+    $("bsSub").textContent = cur ? t("bs.cur", { name: cur.name }) : err ? t("bs.err", { n: err }) : pending ? t("bs.wait", { n: pending }) : n ? t("bs.all") : "";
+    $("bsFill").style.width = n ? `${((done + (cur ? cur.progress : 0)) / n) * 100}%` : "0%";
+    $("runBtn").textContent = S.busy ? t("run.busy") : pending === 1 ? t("run.one") : pending ? t("run.n", { n: pending }) : t("run.all");
+    $("runBtn").disabled = S.busy || !pending;
+    $("zipBtn").disabled = S.busy || done === 0;
+    $("zipBtn").textContent = done > 1 ? t("zip.n", { n: done }) : done === 1 ? t("dl.one") : t("zip.label");
+    $("clearBtn").disabled = S.busy;
+    const big = S.items.some((i) => Math.max(i.w, i.h) > CFG.ai.maxInputSide);
+    const info = Upscaler.aiInfo();
+    $("aiNote").textContent = S.mode !== "ai" ? t("note.fast")
+      : (info.ready ? t("note.ready", { dev: info.backend === "webgpu" ? "GPU" : "CPU" }) : t("note.first"))
+        + (big ? t("note.big", { px: CFG.ai.maxInputSide }) : "");
+  }
+
+  const compare = $("compare");
+  let shownSel = null, shownOut = null;
+  function renderViewer() {
+    const it = S.items.find((i) => i.id === S.sel);
+    if (!it) { compare.classList.add("no-result"); $("viewerMeta").textContent = "—"; return; }
+    if (shownSel !== it.id) {
+      $("imgBefore").src = it.url;
+      compare.style.aspectRatio = `${it.w} / ${it.h}`;
+      setZoom(1); setPos(50);
+      shownSel = it.id; shownOut = null;
+    }
+    const outUrl = it.out?.url || null;
+    if (outUrl !== shownOut) {
+      if (outUrl) $("imgAfter").src = outUrl; else $("imgAfter").removeAttribute("src");
+      shownOut = outUrl;
+    }
+    compare.classList.toggle("no-result", !outUrl);
+    $("working").hidden = it.status !== "processing";
+    const o = outSize(it);
+    $("viewerMeta").textContent = it.out
+      ? `${it.name} · ${it.w}×${it.h} → ${it.out.w}×${it.out.h} · ${t(it.out.mode === "ai" ? "meta.ai" : "meta.fast")} · ${it.out.secs}s`
+      : `${it.name} · ${it.w}×${it.h} → ${o.w}×${o.h} · ${st(it.status)}`;
+  }
+  function renderAll() { renderFrames(); renderStatus(); renderViewer(); renderUsage(); }
+
+  $("frames").addEventListener("click", (e) => {
+    const li = e.target.closest(".frame"); if (!li) return;
+    const it = S.items.find((i) => i.id === Number(li.dataset.id)); if (!it) return;
+    const act = e.target.closest("button")?.dataset.act;
+    if (act === "dl") return downloadOne(it);
+    if (act === "rm") return removeItem(it);
+    if (act === "redo") { it.status = "queued"; it.progress = 0; S.sel = it.id; renderAll(); runQueue(); return; }
+    S.sel = it.id; renderFrames(); renderViewer();
+  });
+
+  function freeItem(it) { URL.revokeObjectURL(it.url); if (it.out) URL.revokeObjectURL(it.out.url); }
+  function removeItem(it) {
+    if (it.status === "processing") return;
+    freeItem(it);
+    S.items = S.items.filter((i) => i !== it);
+    if (S.sel === it.id) S.sel = S.items[0]?.id ?? null;
+    if (!S.items.length) { $("bench").hidden = true; shownSel = null; return; }
+    renderAll();
+  }
+  $("clearBtn").addEventListener("click", () => {
+    if (S.busy) return;
+    S.items.forEach(freeItem); S.items = []; S.sel = null; shownSel = null;
+    $("bench").hidden = true; window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  // =================== TETAPAN ===================
+  function toggle(id, key, cb) {
+    $(id).addEventListener("click", (e) => {
+      const b = e.target.closest("button"); if (!b) return;
+      $(id).querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
+      cb(b.dataset[key]); renderAll();
+    });
+  }
+  toggle("modeSeg", "mode", (v) => (S.mode = v));
+  toggle("scaleSeg", "scale", (v) => (S.scale = Number(v)));
+  toggle("fmtSeg", "fmt", (v) => (S.fmt = v));
+
+  // =================== PROSES BARISAN ===================
+  async function runQueue() {
+    if (S.busy) return;
+    const todo = S.items.filter((i) => i.status === "queued" || i.status === "error");
+    if (!todo.length) return;
+    S.busy = true;
+    const mode = S.mode, scale = S.scale;
+    let aiFailed = false, hitLimit = false;
+    renderAll();
+    for (const it of todo) {
+      if (!S.items.includes(it) || (it.status !== "queued" && it.status !== "error")) continue;
+      if (!it.counted && remaining() <= 0) { hitLimit = true; break; }
+      it.status = "processing"; it.progress = 0; S.sel = it.id;
+      renderAll();
+      const onProgress = (p, label) => {
+        it.progress = p;
+        $("barFill").style.width = `${Math.round(p * 100)}%`;
+        if (label) $("procText").textContent = label;
+        const el = document.querySelector(`.frame[data-id="${it.id}"] .f-status`);
+        if (el) el.textContent = `${st("processing")} ${Math.round(p * 100)}%`;
+        $("bsFill").style.width = `${((S.items.filter((i) => i.status === "done").length + p) / S.items.length) * 100}%`;
+      };
+      onProgress(0, t("proc.prep"));
+      const t0 = performance.now();
+      const opts = { scale, maxSide: CFG.maxOutputSide, strength: 55, ai: CFG.ai, onProgress };
+      try {
+        let canvas, used = mode;
+        if (mode === "ai" && !aiFailed) {
+          try { canvas = await Upscaler.upscaleAI(it.img, opts); }
+          catch (err) {
+            console.error("AI failed:", err);
+            aiFailed = true; used = "classic";
+            toast(t("ai.fail"), 5000);
+            canvas = await Upscaler.upscaleClassic(it.img, opts);
+          }
+        } else {
+          used = "classic";
+          canvas = await Upscaler.upscaleClassic(it.img, opts);
+        }
+        const blob = await new Promise((r) => canvas.toBlob(r, "image/png"));
+        if (it.out) URL.revokeObjectURL(it.out.url);
+        it.out = { blob, url: URL.createObjectURL(blob), w: canvas.width, h: canvas.height, scale, mode: used, secs: ((performance.now() - t0) / 1000).toFixed(1) };
+        canvas.width = canvas.height = 0; // lepaskan memori
+        it.status = "done";
+        if (!it.counted) { it.counted = true; store.set(store.get() + 1); }
+      } catch (err) {
+        console.error(err);
+        it.status = "error";
+      }
+      renderAll();
+    }
+    S.busy = false;
+    renderAll();
+    const done = S.items.filter((i) => i.status === "done").length, err = S.items.filter((i) => i.status === "error").length;
+    if (hitLimit) openPaywall(done);
+    else if (err) toast(t("run.err", { n: err }), 5000);
+    else toast(done > 1 ? t("run.doneMany", { n: done }) : t("run.doneOne"));
+  }
+  $("runBtn").addEventListener("click", runQueue);
+
+  // =================== MUAT TURUN ===================
+  async function encoded(it) {
+    if (S.fmt !== "jpeg") return { blob: it.out.blob, ext: "png" };
+    const bmp = await createImageBitmap(it.out.blob);
+    const c = document.createElement("canvas"); c.width = bmp.width; c.height = bmp.height;
+    const ctx = c.getContext("2d"); ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height); ctx.drawImage(bmp, 0, 0);
+    bmp.close?.();
+    const blob = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.93));
+    c.width = c.height = 0;
+    return { blob, ext: "jpg" };
+  }
+  const fileName = (it, ext) => `${it.name}-${it.out.scale}x.${ext}`;
+  async function downloadOne(it) {
+    if (it.status !== "done") return;
+    const { blob, ext } = await encoded(it);
+    saveFile(fileName(it, ext), blob);
+  }
+  $("zipBtn").addEventListener("click", async () => {
+    const done = S.items.filter((i) => i.status === "done");
+    if (!done.length) return;
+    if (done.length === 1) return downloadOne(done[0]);
+    $("zipBtn").disabled = true; $("zipBtn").textContent = t("zip.prep");
+    try {
+      const used = new Set(), files = [];
+      for (const it of done) {
+        const { blob, ext } = await encoded(it);
+        let name = fileName(it, ext), k = 2;
+        while (used.has(name)) name = `${it.name}-${it.out.scale}x-${k++}.${ext}`;
+        used.add(name);
+        files.push({ name, data: new Uint8Array(await blob.arrayBuffer()) });
+      }
+      await saveFile(t("zip.name", { n: files.length }), makeZip(files));
+    } finally { renderStatus(); }
+  });
+
+  // =================== PERBANDINGAN & ZUM ===================
+  function setPos(p) { compare.style.setProperty("--pos", `${p}%`); }
+  function setZoom(z) { compare.style.setProperty("--z", z); $("zoom").value = z; $("zoomVal").textContent = `${z}×`; }
+  $("zoom").addEventListener("input", (e) => setZoom(Number(e.target.value)));
+  let dragging = false;
+  const pos = (e) => { const r = compare.getBoundingClientRect(); return { x: Math.min(100, Math.max(0, ((e.clientX - r.left) / r.width) * 100)), y: Math.min(100, Math.max(0, ((e.clientY - r.top) / r.height) * 100)) }; };
+  compare.addEventListener("pointerdown", (e) => { if (compare.classList.contains("no-result")) return; dragging = true; compare.setPointerCapture(e.pointerId); setPos(pos(e).x); });
+  compare.addEventListener("pointermove", (e) => { const p = pos(e); if (dragging) setPos(p.x); else { compare.style.setProperty("--ox", `${p.x}%`); compare.style.setProperty("--oy", `${p.y}%`); } });
+  ["pointerup", "pointercancel"].forEach((ev) => compare.addEventListener(ev, () => (dragging = false)));
+
+  // =================== BAHASA ===================
+  function renderLang() {
+    renderStaticVars(); renderPlans(); renderSampleLabels(); renderUsage();
+    if (!paywall.hidden) renderPaywallText();
+    if (S.items.length) { renderFrames(); renderStatus(); renderViewer(); }
+  }
+  I18N.onChange(renderLang);
+  I18N.apply();
+})();
+
+</script>
+</body>
+</html>
