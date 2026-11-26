@@ -6,10 +6,9 @@ window.APP_CONFIG = {
   brandName: "Nuvapix",
 
   // Had upscale percuma bagi setiap pengguna.
-  //   null  = tanpa had (fasa sekarang: percuma sepenuhnya)
-  //   3     = 3 gambar percuma, lepas tu kena bayar
-  // Untuk demo paywall, buka:  index.html?limit=3
-  freeLimit: null,
+  //   null  = tanpa had (percuma sepenuhnya)
+  //   3     = 3 gambar percuma, lepas tu kena bayar (fasa sekarang)
+  freeLimit: 3,
 
   // Saiz output maksimum (lebar atau tinggi, piksel) supaya browser tak crash
   maxOutputSide: 8000,

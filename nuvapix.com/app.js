@@ -5,7 +5,7 @@
   const params = new URLSearchParams(location.search);
 
   // =================== PAKEJ & KUOTA ===================
-  // Fasa sekarang: CFG.freeLimit = null → semua percuma tanpa had.
+  // Fasa sekarang: CFG.freeLimit = 3 → 3 gambar percuma, kemudian paywall.
   // Demo tanpa ubah kod:  ?limit=3 (mod 3 percuma) · ?plan=basic · ?plan=pro · ?reset=1
   // PENTING: Bila mula caj, pakej & kiraan MESTI disimpan di server (akaun pengguna).
   const PLAN = ["basic", "pro"].includes(params.get("plan")) ? params.get("plan") : "free";
