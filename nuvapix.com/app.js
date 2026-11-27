@@ -200,36 +200,14 @@
     return true;
   }
 
-  // =================== LUKISAN CONTOH ===================
-  function drawLandscape(c, w, h) {
-    const sky = c.createLinearGradient(0, 0, 0, h * .62);
-    sky.addColorStop(0, "#132a4f"); sky.addColorStop(.5, "#3f6f9e"); sky.addColorStop(.85, "#f2a65a"); sky.addColorStop(1, "#ffd8a0");
-    c.fillStyle = sky; c.fillRect(0, 0, w, h);
-    const sun = c.createRadialGradient(w * .66, h * .56, 0, w * .66, h * .56, h * .3);
-    sun.addColorStop(0, "#fff6d8"); sun.addColorStop(.3, "#ffd27a"); sun.addColorStop(.31, "rgba(255,200,120,.5)"); sun.addColorStop(1, "rgba(255,160,90,0)");
-    c.fillStyle = sun; c.fillRect(0, 0, w, h * .62);
-    const ridge = (col, base, amp, seed) => {
-      c.fillStyle = col; c.beginPath(); c.moveTo(0, h * .62);
-      for (let x = 0; x <= w; x += w / 70) { const t = x / w; c.lineTo(x, h * base - Math.abs(Math.sin(t * 5 + seed)) * h * amp - Math.sin(t * 19 + seed) * h * amp * .22); }
-      c.lineTo(w, h * .62); c.fill();
-    };
-    ridge("#4a6b8c", .5, .15, 1); ridge("#2c4a68", .56, .12, 3); ridge("#16283d", .6, .07, 5);
-    const sea = c.createLinearGradient(0, h * .62, 0, h);
-    sea.addColorStop(0, "#f2b27a"); sea.addColorStop(.3, "#3c6a90"); sea.addColorStop(1, "#0d1c2e");
-    c.fillStyle = sea; c.fillRect(0, h * .62, w, h * .38);
-    c.fillStyle = "rgba(255,236,190,.8)";
-    for (let i = 0; i < 14; i++) { const y = h * (.64 + i * .022), ww = w * (.15 - i * .009); c.fillRect(w * .66 - ww / 2, y, ww, Math.max(1, h * .006)); }
-    const palm = (x, s) => {
-      c.strokeStyle = "#08111c"; c.lineCap = "round"; c.lineWidth = s * .05;
-      c.beginPath(); c.moveTo(x, h); c.quadraticCurveTo(x + s * .15, h - s * .6, x + s * .05, h - s * 1.15); c.stroke();
-      const tx = x + s * .05, ty = h - s * 1.15; c.lineWidth = s * .035;
-      for (let a = 0; a < 7; a++) { const g = -Math.PI + a * (Math.PI / 6); c.beginPath(); c.moveTo(tx, ty); c.quadraticCurveTo(tx + Math.cos(g) * s * .35, ty + Math.sin(g) * s * .35 - s * .1, tx + Math.cos(g) * s * .55, ty + Math.sin(g) * s * .2 + s * .12); c.stroke(); }
-    };
-    palm(w * .08, h * .6); palm(w * .17, h * .44); palm(w * .92, h * .54);
-    c.fillStyle = "#fff"; c.textBaseline = "top";
-    c.font = `800 ${h * .11}px "Bricolage Grotesque", sans-serif`; c.fillText("Pantai Cenang", w * .05, h * .07);
-    c.font = `500 ${h * .045}px "JetBrains Mono", monospace`; c.fillStyle = "rgba(255,255,255,.85)";
-    c.fillText("LANGKAWI · 6°17'N 99°43'E", w * .05, h * .2);
+  // =================== GAMBAR HERO ===================
+  const heroImg = new Image();
+  heroImg.src = "hero-apples.webp";
+  function drawHero(c, w, h) {
+    const iw = heroImg.naturalWidth, ih = heroImg.naturalHeight, k = Math.max(w / iw, h / ih);
+    const sw = w / k, sh = h / k;
+    c.imageSmoothingQuality = "high";
+    c.drawImage(heroImg, (iw - sw) / 2, (ih - sh) / 2, sw, sh, 0, 0, w, h);
   }
   function makeCanvas(fn, w, h) { const cv = document.createElement("canvas"); cv.width = w; cv.height = h; fn(cv.getContext("2d"), w, h); return cv; }
 
@@ -240,8 +218,8 @@
   function setupLoupe() {
     const r = lc.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1);
     lc.width = Math.max(2, Math.round(r.width * dpr)); lc.height = Math.max(2, Math.round(r.height * dpr));
-    lo = makeCanvas(drawLandscape, 120, 90);
-    hi = makeCanvas(drawLandscape, lc.width, lc.height);
+    lo = makeCanvas(drawHero, 120, 90);
+    hi = makeCanvas(drawHero, lc.width, lc.height);
   }
   function drawLoupe(x, y) {
     const w = lc.width, h = lc.height, R = Math.min(w, h) * .23, css = getComputedStyle(document.documentElement);
@@ -278,7 +256,7 @@
     if (reduce) drawLoupe(pointer.x, pointer.y);
   });
   lc.addEventListener("pointerleave", () => (lastMove = 0));
-  (document.fonts?.ready || Promise.resolve()).then(() => { setupLoupe(); requestAnimationFrame(loupeFrame); });
+  Promise.all([document.fonts?.ready, heroImg.decode()]).then(() => { setupLoupe(); requestAnimationFrame(loupeFrame); }).catch(() => {});
   let rzT; addEventListener("resize", () => { clearTimeout(rzT); rzT = setTimeout(() => { setupLoupe(); if (reduce) loupeFrame(0); }, 200); });
 
 
