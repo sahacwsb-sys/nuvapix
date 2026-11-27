@@ -231,33 +231,7 @@
     c.font = `500 ${h * .045}px "JetBrains Mono", monospace`; c.fillStyle = "rgba(255,255,255,.85)";
     c.fillText("LANGKAWI · 6°17'N 99°43'E", w * .05, h * .2);
   }
-  function drawProduct(c, w, h) {
-    const bg = c.createLinearGradient(0, 0, w, h); bg.addColorStop(0, "#eef2f5"); bg.addColorStop(1, "#d6dee6");
-    c.fillStyle = bg; c.fillRect(0, 0, w, h);
-    c.fillStyle = "#c5ced8"; c.fillRect(0, h * .74, w, h);
-    c.fillStyle = "rgba(0,0,0,.15)"; c.beginPath(); c.ellipse(w * .5, h * .78, w * .17, h * .03, 0, 0, 7); c.fill();
-    c.fillStyle = "#7a3b1e"; c.beginPath(); c.roundRect(w * .36, h * .24, w * .28, h * .54, w * .03); c.fill();
-    c.fillStyle = "#4e2512"; c.fillRect(w * .44, h * .13, w * .12, h * .12);
-    c.fillStyle = "#fff8ee"; c.fillRect(w * .38, h * .4, w * .24, h * .21);
-    c.fillStyle = "#7a3b1e"; c.textAlign = "center"; c.font = `800 ${h * .075}px "Bricolage Grotesque", sans-serif`; c.fillText("SAMBAL", w * .5, h * .51);
-    c.font = `600 ${h * .035}px "JetBrains Mono", monospace`; c.fillText("PEDAS · 250g", w * .5, h * .575);
-    c.fillStyle = "#d6006f"; c.font = `800 ${h * .085}px "Bricolage Grotesque", sans-serif`; c.fillText("BELI 2 PERCUMA 1", w * .5, h * .93);
-    c.textAlign = "left";
-  }
-  function drawLogo(c, w, h) {
-    c.fillStyle = "#ffffff"; c.fillRect(0, 0, w, h);
-    const s = h * .5, x0 = w * .1, y0 = h * .25, g = s * .06, q = (s - g) / 2;
-    [["#0094d4", 0, 0], ["#d6006f", 1, 0], ["#f2c200", 0, 1], ["#111a2b", 1, 1]].forEach(([col, i, j]) => { c.fillStyle = col; c.fillRect(x0 + i * (q + g), y0 + j * (q + g), q, q); });
-    c.fillStyle = "#111a2b"; c.textBaseline = "middle"; c.font = `800 ${h * .2}px "Bricolage Grotesque", sans-serif`; c.fillText("Kedai", w * .48, h * .42);
-    c.font = `500 ${h * .11}px "JetBrains Mono", monospace`; c.fillStyle = "#5a6779"; c.fillText("SAHA & CO.", w * .48, h * .62);
-  }
   function makeCanvas(fn, w, h) { const cv = document.createElement("canvas"); cv.width = w; cv.height = h; fn(cv.getContext("2d"), w, h); return cv; }
-  const SAMPLES = [
-    { fn: drawLandscape, w: 240, h: 160, name: "pantai-cenang.png" },
-    { fn: drawProduct, w: 180, h: 180, name: "sambal-pedas.png" },
-    { fn: drawLogo, w: 220, h: 120, name: "logo-kedai.png" },
-  ];
-  const sampleFile = (s) => new Promise((r) => makeCanvas(s.fn, s.w, s.h).toBlob((b) => r(new File([b], s.name, { type: "image/png" }))));
 
   // =================== KANTA PEMBESAR (HERO) ===================
   const lc = $("loupe"), lctx = lc.getContext("2d");
@@ -307,18 +281,6 @@
   (document.fonts?.ready || Promise.resolve()).then(() => { setupLoupe(); requestAnimationFrame(loupeFrame); });
   let rzT; addEventListener("resize", () => { clearTimeout(rzT); rzT = setTimeout(() => { setupLoupe(); if (reduce) loupeFrame(0); }, 200); });
 
-
-  // =================== BUTANG CONTOH ===================
-  const sampleBtns = SAMPLES.map((s) => {
-    const b = document.createElement("button");
-    b.type = "button"; b.title = s.name;
-    b.appendChild(makeCanvas(s.fn, 92, 92));
-    b.addEventListener("click", async (e) => { e.stopPropagation(); addFiles([await sampleFile(s)]); });
-    $("sampleRow").appendChild(b);
-    return [b, s];
-  });
-  const renderSampleLabels = () => sampleBtns.forEach(([b, s]) => b.setAttribute("aria-label", t("samples.aria", { name: s.name })));
-  $("sampleAllBtn").addEventListener("click", async () => addFiles(await Promise.all(SAMPLES.map(sampleFile))));
 
   // =================== MASUKKAN GAMBAR ===================
   const drop = $("dropZone"), input = $("fileInput");
@@ -610,7 +572,7 @@
 
   // =================== BAHASA ===================
   function renderLang() {
-    renderStaticVars(); renderPlans(); renderSampleLabels(); renderUsage(); renderAcct();
+    renderStaticVars(); renderPlans(); renderUsage(); renderAcct();
     if (!paywall.hidden) renderPaywallText();
     if (!authModal.hidden) renderAuth();
     if (S.items.length) { renderFrames(); renderStatus(); renderViewer(); }
